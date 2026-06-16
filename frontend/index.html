@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InvTrack - Smart Inventory Management</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry&callback=loadInitialData"
+      async
+      defer
+    ></script>
+  </head>
+  <body>
+    <div id="authPage" class="page active">
+      <div class="auth-container">
+        <div class="auth-box">
+          <div class="auth-header">
+            <h1><i class="fas fa-shopping-bag"></i> InvTrack</h1>
+            <p>Smart Inventory Management</p>
+          </div>
+
+          <div id="alert" class="alert"></div>
+
+          <div id="loginForm">
+            <div class="auth-tabs">
+              <button class="auth-tab active" onclick="switchTab('login')">
+                Login
+              </button>
+              <button class="auth-tab" onclick="switchTab('signup')">
+                Sign Up
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                id="loginEmail"
+                placeholder="your@email.com"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                id="loginPassword"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button class="btn btn-primary" onclick="handleLogin()">
+              Login
+            </button>
+
+            <div class="text-center">
+              <p style="font-size: 12px; color: #6b7280; margin-top: 1rem">
+                Demo Accounts:
+              </p>
+              <p style="font-size: 11px; margin: 0.5rem 0">
+                <strong>Customer:</strong> customer@test.com / test123
+              </p>
+              <p style="font-size: 11px; margin: 0.5rem 0">
+                <strong>Shopkeeper:</strong> shop@test.com / test123
+              </p>
+              <p style="font-size: 11px; margin: 0.5rem 0">
+                <strong>Admin (Login Only):</strong> admin@invtrack.com /
+                Admin@123
+              </p>
+            </div>
+          </div>
+
+          <div id="signupForm" style="display: none">
+            <div class="auth-tabs">
+              <button class="auth-tab" onclick="switchTab('login')">
+                Login
+              </button>
+              <button class="auth-tab active" onclick="switchTab('signup')">
+                Sign Up
+              </button>
+            </div>
+
+            <label
+              style="
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 1rem;
+              "
+              >Select Role</label
+            >
+
+            <div class="role-selector">
+              <button
+                class="role-btn active"
+                onclick="selectRole(this, 'customer')"
+              >
+                <i class="fas fa-user"></i>
+                Customer
+              </button>
+              <button class="role-btn" onclick="selectRole(this, 'shopkeeper')">
+                <i class="fas fa-store"></i>
+                Shopkeeper
+              </button>
+              <button
+                class="role-btn"
+                onclick="
+                  alert('Admin accounts can only be created by the system')
+                "
+                disabled
+                style="opacity: 0.5; cursor: not-allowed"
+              >
+                <i class="fas fa-shield-alt"></i>
+                Admin
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="signupName" placeholder="John Doe" />
+            </div>
+
+            <div class="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                id="signupEmail"
+                placeholder="your@email.com"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                id="signupPassword"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div id="shopkeeperFields" style="display: none">
+              <div class="form-group">
+                <label>Shop Name</label>
+                <input type="text" id="storeName" placeholder="My Shop" />
+              </div>
+              <div class="form-group">
+                <label>City</label>
+                <input type="text" id="storeCity" placeholder="New Delhi" />
+              </div>
+              <div class="form-group">
+                <label>Address</label>
+                <input
+                  type="text"
+                  id="storeAddress"
+                  placeholder="123 Market Street"
+                />
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  id="storePhone"
+                  placeholder="+91 9876543210"
+                />
+              </div>
+              <div class="form-group">
+                <label>Latitude</label>
+                <input
+                  type="number"
+                  id="storeLat"
+                  placeholder="28.6139"
+                  step="0.0001"
+                />
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input
+                  type="number"
+                  id="storeLon"
+                  placeholder="77.2090"
+                  step="0.0001"
+                />
+              </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="handleSignup()">
+              Create Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="mainApp" class="page">
+      <div class="navbar">
+        <div class="navbar-brand">
+          <i class="fas fa-shopping-bag"></i> InvTrack
+        </div>
+        <div class="navbar-user">
+          <span style="font-size: 14px" id="userName"></span>
+          <span class="user-badge" id="userRole"></span>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <div class="sidebar" id="sidebar"></div>
+
+        <div class="content">
+          <div id="section-shops" class="section active">
+            <h2>🏪 Nearby Shops</h2>
+            <div
+              id="map"
+              style="
+                display: none;
+                height: 350px;
+                width: 100%;
+                border-radius: 8px;
+                margin-bottom: 1.5rem;
+              "
+            ></div>
+            <div
+              id="shopsContainer"
+              class="grid grid-2"
+              style="margin-top: 1.5rem"
+            ></div>
+          </div>
+
+          <div id="section-shopping-list" class="section">
+            <h2>🛒 Smart Shopping List</h2>
+            <div class="card">
+              <p style="margin-bottom: 1rem">
+                Add items to find the nearest shop(s) with all products
+              </p>
+              <div id="shoppingListItems"></div>
+              <button
+                class="btn btn-primary"
+                onclick="addShoppingListItem()"
+                style="margin-top: 1rem"
+              >
+                + Add Item
+              </button>
+              <button
+                class="btn btn-success"
+                onclick="findOptimalShops()"
+                style="margin-top: 1rem; width: auto; margin-left: 1rem"
+              >
+                Find Shops
+              </button>
+            </div>
+            <div id="searchResults" style="margin-top: 2rem"></div>
+          </div>
+
+          <div id="section-orders" class="section">
+            <h2>📦 My Orders</h2>
+            <div id="ordersContainer"></div>
+          </div>
+
+          <div id="section-dashboard" class="section">
+            <h2>📊 Dashboard</h2>
+            <div class="grid grid-2">
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--primary);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="totalProducts"
+                >
+                  0
+                </div>
+                <div style="color: #6b7280">Total Products</div>
+              </div>
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--success);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="ordersToday"
+                >
+                  0
+                </div>
+                <div style="color: #6b7280">Orders Today</div>
+              </div>
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--primary);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="revenueToday"
+                >
+                  ₹0
+                </div>
+                <div style="color: #6b7280">Revenue Today</div>
+              </div>
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--danger);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="lowStockCount"
+                >
+                  0
+                </div>
+                <div style="color: #6b7280">Low Stock Items</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="section-inventory" class="section">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+              "
+            >
+              <h2>📦 Inventory Management</h2>
+              <button
+                class="btn btn-primary"
+                onclick="openAddProductModal()"
+                style="width: auto"
+              >
+                + Add Product
+              </button>
+            </div>
+            <div id="inventoryTable"></div>
+          </div>
+
+          <div id="section-orders-shop" class="section">
+            <h2>📋 Customer Orders</h2>
+            <div id="shopOrdersContainer"></div>
+          </div>
+
+          <div id="section-admin-dashboard" class="section">
+            <h2>🛡️ Admin Dashboard</h2>
+            <div class="grid grid-2">
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--primary);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="totalUsers"
+                >
+                  0
+                </div>
+                <div style="color: #6b7280">Total Users</div>
+              </div>
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--primary);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="totalShops"
+                >
+                  0
+                </div>
+                <div style="color: #6b7280">Active Shops</div>
+              </div>
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--success);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="adminOrders"
+                >
+                  0
+                </div>
+                <div style="color: #6b7280">Total Orders</div>
+              </div>
+              <div class="card">
+                <div
+                  style="
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: var(--primary);
+                    margin-bottom: 0.5rem;
+                  "
+                  id="adminRevenue"
+                >
+                  ₹0
+                </div>
+                <div style="color: #6b7280">Total Revenue</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="section-users" class="section">
+            <h2>👥 User Management</h2>
+            <div id="usersTable"></div>
+          </div>
+
+          <div id="section-security" class="section">
+            <h2>🔐 Security Settings</h2>
+            <div class="card">
+              <p style="margin-bottom: 1rem">Verify Admin Accounts</p>
+              <div style="display: flex; gap: 0.5rem">
+                <input
+                  type="email"
+                  id="adminEmail"
+                  placeholder="admin@email.com"
+                  style="
+                    flex: 1;
+                    padding: 8px;
+                    border: 1px solid var(--border);
+                    border-radius: 6px;
+                  "
+                />
+                <button
+                  class="btn btn-primary"
+                  onclick="verifyAdmin()"
+                  style="width: auto"
+                >
+                  Verify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="addProductModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add Product</h2>
+          <button class="close-modal" onclick="closeModal('addProductModal')">
+            ×
+          </button>
+        </div>
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="productName" placeholder="e.g., Apple" />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" id="productCategory" placeholder="e.g., Fruits" />
+        </div>
+        <div class="form-group">
+          <label>Price (₹)</label>
+          <input type="number" id="productPrice" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" id="productQty" placeholder="0" />
+        </div>
+        <button class="btn btn-primary" onclick="addProduct()">
+          Add Product
+        </button>
+      </div>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
