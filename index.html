@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvTrack - Smart Inventory Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e40af;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* ===== AUTH PAGE ===== */
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        .auth-box {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-header h1 {
+            font-size: 28px;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .auth-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .role-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .role-btn {
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .role-btn:hover {
+            border-color: var(--primary);
+            background: #f0f4ff;
+        }
+
+        .role-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .role-btn i {
+            display: block;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .text-center {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .user-badge {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* ===== MAIN APP ===== */
+        .main-container {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid var(--border);
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .sidebar-item:hover {
+            background: var(--light);
+            color: var(--primary);
+        }
+
+        .sidebar-item.active {
+            background: #f0f4ff;
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: var(--light);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .card h3 {
+            margin-bottom: 1rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
+
+        /* ===== MAPS ===== */
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .shop-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .shop-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .shop-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .shop-distance {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        /* ===== SHOPPING LIST ===== */
+        .shopping-list-item {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .shopping-list-item input {
+            flex: 1;
+            border: none;
+            outline: none;
+        }
+
+        .shopping-list-item input[type="number"] {
+            width: 80px;
+        }
+
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .product-table th {
+            background: var(--light);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .product-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .product-table tr:hover {
+            background: var(--light);
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                display: flex;
+                overflow-x: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .main-container {
+                flex-direction: column;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .product-table {
+                font-size: 12px;
+            }
+
+            .product-table th, .product-table td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== AUTH PAGE ===== -->
+<div id="authPage" class="page active">
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1><i class="fas fa-shopping-bag"></i> InvTrack</h1>
+                <p>Smart Inventory Management</p>
+            </div>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- Login Tab -->
+            <div id="loginForm">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+                    <button class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
+                </div>
+
+                <button class="btn btn-primary" onclick="handleLogin()">Login</button>
+
+                <div class="text-center">
+                    <p style="font-size: 12px; color: #6b7280; margin-top: 1rem;">Demo Accounts:</p>
+                    <p style="font-size: 11px; margin: 0.5rem 0;">
+                        <strong>Customer:</strong> customer@test.com / test123
+                    </p>
+                    <p style="font-size: 11px; margin: 0.5rem 0;">
+                        <strong>Shopkeeper:</strong> shop@test.com / test123
+                    </p>
+                    <p style="font-size: 11px; margin: 0.5rem 0;">
+                        <strong>Admin (Login Only):</strong> admin@invtrack.com / Admin@123
+                    </p>
+                </div>
+            </div>
+
+            <!-- Signup Tab -->
+            <div id="signupForm" style="display: none;">
+                <div class="auth-tabs">
+                    <button class="auth-tab" onclick="switchTab('login')">Login</button>
+                    <button class="auth-tab active" onclick="switchTab('signup')">Sign Up</button>
+                </div>
+
+                <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 1rem;">Select Role</label>
+
+                <div class="role-selector">
+                    <button class="role-btn active" onclick="selectRole(this, 'customer')">
+                        <i class="fas fa-user"></i>
+                        Customer
+                    </button>
+                    <button class="role-btn" onclick="selectRole(this, 'shopkeeper')">
+                        <i class="fas fa-store"></i>
+                        Shopkeeper
+                    </button>
+                    <button class="role-btn" onclick="alert('Admin accounts can only be created by the system')" disabled style="opacity: 0.5; cursor: not-allowed;">
+                        <i class="fas fa-shield-alt"></i>
+                        Admin
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="signupName" placeholder="John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="signupEmail" placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="signupPassword" placeholder="••••••••">
+                </div>
+
+                <div id="shopkeeperFields" style="display: none;">
+                    <div class="form-group">
+                        <label>Shop Name</label>
+                        <input type="text" id="storeName" placeholder="My Shop">
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" id="storeCity" placeholder="New Delhi">
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" id="storeAddress" placeholder="123 Market Street">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="storePhone" placeholder="+91 9876543210">
+                    </div>
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="number" id="storeLat" placeholder="28.6139" step="0.0001">
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="number" id="storeLon" placeholder="77.2090" step="0.0001">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="handleSignup()">Create Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="mainApp" class="page">
+    <!-- Navbar -->
+    <div class="navbar">
+        <div class="navbar-brand">
+            <i class="fas fa-shopping-bag"></i> InvTrack
+        </div>
+        <div class="navbar-user">
+            <span style="font-size: 14px;" id="userName"></span>
+            <span class="user-badge" id="userRole"></span>
+            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar"></div>
+
+        <!-- Content -->
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- CUSTOMER SECTIONS -->
+            <div id="section-shops" class="section active">
+                <h2>🏪 Nearby Shops</h2>
+                <div id="map" style="display: none;"></div>
+                <div id="shopsContainer" class="grid grid-2" style="margin-top: 1.5rem;"></div>
+            </div>
+
+            <div id="section-shopping-list" class="section">
+                <h2>🛒 Smart Shopping List</h2>
+                <div class="card">
+                    <p style="margin-bottom: 1rem;">Add items to find the nearest shop(s) with all products</p>
+                    <div id="shoppingListItems"></div>
+                    <button class="btn btn-primary" onclick="addShoppingListItem()" style="margin-top: 1rem;">+ Add Item</button>
+                    <button class="btn btn-success" onclick="findOptimalShops()" style="margin-top: 1rem; width: auto; margin-left: 1rem;">Find Shops</button>
+                </div>
+                <div id="searchResults" style="margin-top: 2rem;"></div>
+            </div>
+
+            <div id="section-orders" class="section">
+                <h2>📦 My Orders</h2>
+                <div id="ordersContainer"></div>
+            </div>
+
+            <!-- SHOPKEEPER SECTIONS -->
+            <div id="section-dashboard" class="section">
+                <h2>📊 Dashboard</h2>
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;" id="totalProducts">0</div>
+                        <div style="color: #6b7280;">Total Products</div>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--success); margin-bottom: 0.5rem;" id="ordersToday">0</div>
+                        <div style="color: #6b7280;">Orders Today</div>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;" id="revenueToday">₹0</div>
+                        <div style="color: #6b7280;">Revenue Today</div>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--danger); margin-bottom: 0.5rem;" id="lowStockCount">0</div>
+                        <div style="color: #6b7280;">Low Stock Items</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-inventory" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>📦 Inventory Management</h2>
+                    <button class="btn btn-primary" onclick="openAddProductModal()" style="width: auto;">+ Add Product</button>
+                </div>
+                <div id="inventoryTable"></div>
+            </div>
+
+            <div id="section-orders-shop" class="section">
+                <h2>📋 Customer Orders</h2>
+                <div id="shopOrdersContainer"></div>
+            </div>
+
+            <!-- ADMIN SECTIONS -->
+            <div id="section-admin-dashboard" class="section">
+                <h2>🛡️ Admin Dashboard</h2>
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;" id="totalUsers">0</div>
+                        <div style="color: #6b7280;">Total Users</div>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;" id="totalShops">0</div>
+                        <div style="color: #6b7280;">Active Shops</div>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--success); margin-bottom: 0.5rem;" id="adminOrders">0</div>
+                        <div style="color: #6b7280;">Total Orders</div>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;" id="adminRevenue">₹0</div>
+                        <div style="color: #6b7280;">Total Revenue</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-users" class="section">
+                <h2>👥 User Management</h2>
+                <div id="usersTable"></div>
+            </div>
+
+            <div id="section-security" class="section">
+                <h2>🔐 Security Settings</h2>
+                <div class="card">
+                    <p style="margin-bottom: 1rem;">Verify Admin Accounts</p>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="email" id="adminEmail" placeholder="admin@email.com" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px;">
+                        <button class="btn btn-primary" onclick="verifyAdmin()" style="width: auto;">Verify</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<div id="addProductModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Product</h2>
+            <button class="close-modal" onclick="closeModal('addProductModal')">×</button>
+        </div>
+        <div class="form-group">
+            <label>Product Name</label>
+            <input type="text" id="productName" placeholder="e.g., Apple">
+        </div>
+        <div class="form-group">
+            <label>Category</label>
+            <input type="text" id="productCategory" placeholder="e.g., Fruits">
+        </div>
+        <div class="form-group">
+            <label>Price (₹)</label>
+            <input type="number" id="productPrice" placeholder="0.00">
+        </div>
+        <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" id="productQty" placeholder="0">
+        </div>
+        <button class="btn btn-primary" onclick="addProduct()">Add Product</button>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'http://localhost:5000/api';
+    let currentUser = null;
+    let map = null;
+    let shoppingListItems = [];
+
+    // ===== AUTH FUNCTIONS =====
+    function switchTab(tab) {
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        
+        if (tab === 'login') {
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+        } else {
+            loginForm.style.display = 'none';
+            signupForm.style.display = 'block';
+        }
+
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    function selectRole(btn, role) {
+        document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const shopFields = document.getElementById('shopkeeperFields');
+        if (role === 'shopkeeper') {
+            shopFields.style.display = 'block';
+        } else {
+            shopFields.style.display = 'none';
+        }
+    }
+
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showAlert(data.error || 'Login failed', 'danger');
+                return;
+            }
+
+            currentUser = data.user;
+            showApp();
+        } catch (error) {
+            showAlert('Connection error', 'danger');
+        }
+    }
+
+    async function handleSignup() {
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const role = document.querySelector('.role-btn.active').textContent.toLowerCase();
+
+        let body = { name, email, password, role };
+
+        if (role === 'shopkeeper') {
+            body = {
+                ...body,
+                shop_name: document.getElementById('storeName').value,
+                city: document.getElementById('storeCity').value,
+                address: document.getElementById('storeAddress').value,
+                phone: document.getElementById('storePhone').value,
+                latitude: parseFloat(document.getElementById('storeLat').value),
+                longitude: parseFloat(document.getElementById('storeLon').value)
+            };
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showAlert(data.error || 'Signup failed', 'danger');
+                return;
+            }
+
+            currentUser = data.user;
+            showAlert('Account created successfully!', 'success');
+            showApp();
+        } catch (error) {
+            showAlert('Connection error', 'danger');
+        }
+    }
+
+    function handleLogout() {
+        currentUser = null;
+        document.getElementById('authPage').classList.add('active');
+        document.getElementById('mainApp').classList.remove('active');
+    }
+
+    // ===== APP FUNCTIONS =====
+    function showApp() {
+        document.getElementById('authPage').classList.remove('active');
+        document.getElementById('mainApp').classList.add('active');
+        renderNavBar();
+        renderSidebar();
+        loadInitialData();
+    }
+
+    function renderNavBar() {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = currentUser.role.toUpperCase();
+    }
+
+    function renderSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.innerHTML = '';
+
+        const menus = {
+            customer: [
+                { icon: 'fas fa-store', label: 'Shops', section: 'shops' },
+                { icon: 'fas fa-list', label: 'Shopping List', section: 'shopping-list' },
+                { icon: 'fas fa-receipt', label: 'Orders', section: 'orders' }
+            ],
+            shopkeeper: [
+                { icon: 'fas fa-chart-bar', label: 'Dashboard', section: 'dashboard' },
+                { icon: 'fas fa-boxes', label: 'Inventory', section: 'inventory' },
+                { icon: 'fas fa-receipt', label: 'Orders', section: 'orders-shop' }
+            ],
+            admin: [
+                { icon: 'fas fa-tachometer-alt', label: 'Dashboard', section: 'admin-dashboard' },
+                { icon: 'fas fa-users', label: 'Users', section: 'users' },
+                { icon: 'fas fa-lock', label: 'Security', section: 'security' }
+            ]
+        };
+
+        const items = menus[currentUser.role] || [];
+        items.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = `sidebar-item ${idx === 0 ? 'active' : ''}`;
+            div.innerHTML = `<i class="${item.icon}"></i> ${item.label}`;
+            div.onclick = () => showSection(item.section);
+            sidebar.appendChild(div);
+        });
+    }
+
+    function showSection(sectionName) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(`section-${sectionName}`).classList.add('active');
+
+        document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+        event.target.closest('.sidebar-item').classList.add('active');
+    }
+
+    async function loadInitialData() {
+        if (currentUser.role === 'customer') {
+            await loadShops();
+        } else if (currentUser.role === 'shopkeeper') {
+            await loadDashboard();
+        } else if (currentUser.role === 'admin') {
+            await loadAdminDashboard();
+        }
+    }
+
+    // ===== CUSTOMER FUNCTIONS =====
+    async function loadShops() {
+        try {
+            let lat, lon;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    lat = pos.coords.latitude;
+                    lon = pos.coords.longitude;
+                    initMap(lat, lon);
+                    fetchShops(lat, lon);
+                });
+            }
+        } catch (error) {
+            console.error('Geolocation error:', error);
+        }
+    }
+
+    function initMap(lat, lon) {
+        const mapElement = document.getElementById('map');
+        mapElement.style.display = 'block';
+
+        map = new google.maps.Map(mapElement, {
+            zoom: 13,
+            center: { lat, lng: lon }
+        });
+
+        new google.maps.Marker({
+            position: { lat, lng: lon },
+            map: map,
+            title: 'Your Location',
+            icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+        });
+    }
+
+    async function fetchShops(lat, lon) {
+        try {
+            const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`);
+            const shops = await response.json();
+
+            const container = document.getElementById('shopsContainer');
+            container.innerHTML = '';
+
+            shops.forEach(shop => {
+                const card = document.createElement('div');
+                card.className = 'shop-card';
+                card.innerHTML = `
+                    <div class="shop-name">${shop.name}</div>
+                    <div class="shop-distance">📍 ${shop.distance.toFixed(1)} km away</div>
+                    <div style="margin-top: 0.5rem; color: #6b7280; font-size: 12px;">⭐ ${shop.rating}</div>
+                    <button class="btn btn-primary" onclick="viewShopProducts(${shop.id})" style="margin-top: 1rem; padding: 8px; font-size: 12px;">View Products</button>
+                `;
+                container.appendChild(card);
+
+                if (map) {
+                    new google.maps.Marker({
+                        position: { lat: shop.latitude, lng: shop.longitude },
+                        map: map,
+                        title: shop.name
+                    });
+                }
+            });
+        } catch (error) {
+            showAlert('Failed to load shops', 'danger');
+        }
+    }
+
+    function addShoppingListItem() {
+        const id = Date.now();
+        const item = {
+            id,
+            name: '',
+            quantity: 1
+        };
+        shoppingListItems.push(item);
+        renderShoppingList();
+    }
+
+    function renderShoppingList() {
+        const container = document.getElementById('shoppingListItems');
+        container.innerHTML = '';
+
+        shoppingListItems.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'shopping-list-item';
+            div.innerHTML = `
+                <input type="text" placeholder="Product name" value="${item.name}" 
+                    onchange="shoppingListItems[${idx}].name = this.value">
+                <input type="number" placeholder="Qty" value="${item.quantity}" min="1"
+                    onchange="shoppingListItems[${idx}].quantity = parseInt(this.value)">
+                <button class="btn btn-danger" onclick="removeShoppingItem(${idx})" style="width: auto; padding: 8px; font-size: 12px;">×</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function removeShoppingItem(idx) {
+        shoppingListItems.splice(idx, 1);
+        renderShoppingList();
+    }
+
+    async function findOptimalShops() {
+        if (shoppingListItems.length === 0) {
+            showAlert('Please add items to your shopping list', 'danger');
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            showAlert('Location access required', 'danger');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            try {
+                const response = await fetch(`${API_BASE}/shopping-list/find-shops`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        items: shoppingListItems.map(item => ({
+                            name: item.name,
+                            quantity: item.quantity
+                        })),
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude
+                    })
+                });
+
+                const data = await response.json();
+                displaySearchResults(data);
+            } catch (error) {
+                showAlert('Failed to find shops', 'danger');
+            }
+        });
+    }
+
+    function displaySearchResults(data) {
+        const container = document.getElementById('searchResults');
+        let html = '<h3>Results:</h3>';
+
+        if (data.complete) {
+            html += '<p style="color: var(--success); margin-bottom: 1rem;">✓ All items found!</p>';
+        } else {
+            html += `<p style="color: var(--danger); margin-bottom: 1rem;">Missing items: ${data.missing_items.map(i => i.name).join(', ')}</p>`;
+        }
+
+        data.shops.forEach(shop => {
+            html += `
+                <div class="card">
+                    <h4>${shop.name} - ${shop.distance} km away</h4>
+                    <ul style="margin-left: 1.5rem; margin-top: 1rem;">
+                        ${shop.items.map(item => `
+                            <li>${item.name} x${item.quantity_needed} @ ₹${item.price}</li>
+                        `).join('')}
+                    </ul>
+                    <button class="btn btn-success" onclick="proceedToCheckout(${shop.id}, ${JSON.stringify(shop.items).replace(/"/g, '&quot;')})" 
+                        style="margin-top: 1rem; width: auto;">Order from ${shop.name}</button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    async function proceedToCheckout(shopId, items) {
+        const itemsArray = JSON.parse(JSON.stringify(items).replace(/&quot;/g, '"'));
+        try {
+            const response = await fetch(`${API_BASE}/orders/pre-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    shop_id: shopId,
+                    items: itemsArray.map(item => ({
+                        product_id: item.id,
+                        quantity: item.quantity_needed
+                    }))
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showAlert(data.error || 'Order failed', 'danger');
+                return;  
+            }
+
+            showAlert('Order placed successfully! Payment processed.', 'success');
+            shoppingListItems = [];
+            renderShoppingList();
+        } catch (error) {
+            showAlert('Failed to place order', 'danger');
+        }
+    }
+
+    async function viewShopProducts(shopId) {
+        try {
+            const response = await fetch(`${API_BASE}/shops/${shopId}/products`);
+            const products = await response.json();
+            console.log('Shop products:', products);
+        } catch (error) {
+            showAlert('Failed to load products', 'danger');
+        }
+    }
+
+    async function loadDashboard() {
+        try {
+            const response = await fetch(`${API_BASE}/shopkeeper/dashboard`, {
+                credentials: 'include'
+            });
+            const data = await response.json();
+
+            document.getElementById('totalProducts').textContent = data.total_products;
+            document.getElementById('ordersToday').textContent = data.orders_today;
+            document.getElementById('revenueToday').textContent = '₹' + data.revenue_today;
+            document.getElementById('lowStockCount').textContent = data.low_stock_items;
+            
+            loadInventory();
+            loadShopOrders();
+        } catch (error) {
+            showAlert('Failed to load dashboard', 'danger');
+        }
+    }
+
+    async function loadInventory() {
+        try {
+            const response = await fetch(`${API_BASE}/shopkeeper/products`, {
+                credentials: 'include'
+            });
+            const products = await response.json();
+
+            const container = document.getElementById('inventoryTable');
+            let html = '<table class="product-table"><thead><tr><th>Name</th><th>Price</th><th>Qty</th><th>Action</th></tr></thead><tbody>';
+
+            products.forEach(product => {
+                html += `
+                    <tr>
+                        <td>${product.name}</td>
+                        <td>₹${product.price}</td>
+                        <td>${product.quantity}</td>
+                        <td><button class="btn btn-danger" onclick="deleteProduct(${product.id})" style="width: auto; padding: 6px 12px; font-size: 12px;">Delete</button></td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (error) {
+            showAlert('Failed to load inventory', 'danger');
+        }
+    }
+
+    async function loadShopOrders() {
+        try {
+            const response = await fetch(`${API_BASE}/shopkeeper/orders`, {
+                credentials: 'include'
+            });
+            const orders = await response.json();
+
+            const container = document.getElementById('shopOrdersContainer');
+            if (orders.length === 0) {
+                container.innerHTML = '<p>No orders yet</p>';
+                return;
+            }
+
+            let html = '';
+            orders.forEach(order => {
+                html += `
+                    <div class="card">
+                        <h4>Order #${order.id} from ${order.customer_name}</h4>
+                        <p style="margin: 0.5rem 0; color: #6b7280;">Total: ₹${order.total}</p>
+                        <button class="btn btn-success" onclick="markDelivered(${order.id})" style="margin-top: 1rem; width: auto;">Mark Delivered</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        } catch (error) {
+            showAlert('Failed to load orders', 'danger');
+        }
+    }
+
+    async function addProduct() {
+        const name = document.getElementById('productName').value;
+        const category = document.getElementById('productCategory').value;
+        const price = document.getElementById('productPrice').value;
+        const quantity = document.getElementById('productQty').value;
+
+        try {
+            const response = await fetch(`${API_BASE}/shopkeeper/products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name, category, price, quantity, description: '' })
+            });
+
+            if (!response.ok) {
+                showAlert('Failed to add product', 'danger');
+                return;
+            }
+
+            closeModal('addProductModal');
+            showAlert('Product added successfully!', 'success');
+            loadInventory();
+            loadDashboard();
+        } catch (error) {
+            showAlert('Failed to add product', 'danger');
+        }
+    }
+
+    async function deleteProduct(productId) {
+        if (!confirm('Delete this product?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/shopkeeper/products/${productId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                showAlert('Failed to delete product', 'danger');
+                return;
+            }
+
+            showAlert('Product deleted!', 'success');
+            loadInventory();
+        } catch (error) {
+            showAlert('Failed to delete product', 'danger');
+        }
+    }
+
+    async function markDelivered(orderId) {
+        try {
+            const response = await fetch(`${API_BASE}/shopkeeper/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ status: 'delivered' })
+            });
+
+            if (!response.ok) {
+                showAlert('Failed to update order', 'danger');
+                return;
+            }
+
+            showAlert('Order marked as delivered!', 'success');
+            loadShopOrders();
+        } catch (error) {
+            showAlert('Failed to update order', 'danger');
+        }
+    }
+    async function loadAdminDashboard() {
+        try {
+            const response = await fetch(`${API_BASE}/admin/dashboard`, {
+                credentials: 'include'
+            });
+            const data = await response.json();
+
+            document.getElementById('totalUsers').textContent = data.total_users;
+            document.getElementById('totalShops').textContent = data.total_shops;
+            document.getElementById('adminOrders').textContent = data.total_orders;
+            document.getElementById('adminRevenue').textContent = '₹' + data.total_revenue;
+
+            loadAllUsers();
+        } catch (error) {
+            showAlert('Failed to load admin dashboard', 'danger');
+        }
+    }
+
+    async function loadAllUsers() {
+        try {
+            const response = await fetch(`${API_BASE}/admin/users`, {
+                credentials: 'include'
+            });
+            const users = await response.json();
+
+            const container = document.getElementById('usersTable');
+            let html = '<table class="product-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead><tbody>';
+
+            users.forEach(user => {
+                html += `
+                    <tr>
+                        <td>${user.name}</td>
+                        <td>${user.email}</td>
+                        <td>${user.role}</td>
+                        <td><button class="btn btn-danger" onclick="deleteUserAdmin(${user.id})" style="width: auto; padding: 6px 12px; font-size: 12px;">Delete</button></td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } catch (error) {
+            showAlert('Failed to load users', 'danger');
+        }
+    }
+
+    async function deleteUserAdmin(userId) {
+        if (!confirm('Delete this user?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/admin/users/${userId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                showAlert('Failed to delete user', 'danger');
+                return;
+            }
+
+            showAlert('User deleted!', 'success');
+            loadAllUsers();
+        } catch (error) {
+            showAlert('Failed to delete user', 'danger');
+        }
+    }
+
+    async function verifyAdmin() {
+        const email = document.getElementById('adminEmail').value;
+
+        try {
+            const response = await fetch(`${API_BASE}/admin/admins/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email })
+            });
+
+            if (!response.ok) {
+                showAlert('Failed to verify admin', 'danger');
+                return;
+            }
+
+            showAlert('Admin verified!', 'success');
+            document.getElementById('adminEmail').value = '';
+        } catch (error) {
+            showAlert('Failed to verify admin', 'danger');
+        }
+    }
+    function openAddProductModal() {
+        document.getElementById('addProductModal').classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.textContent = message;
+        alert.className = `alert alert-${type} show`;
+
+        setTimeout(() => {
+            alert.classList.remove('show');
+        }, 3000);
+    }
+</script>
+
+</body>
+</html>
