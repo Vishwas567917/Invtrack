@@ -14,6 +14,10 @@ from routes.customer import customer_bp
 from routes.admin import admin_bp
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False
 
 # Read configuration from environment variables with fallback settings
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
@@ -26,9 +30,12 @@ app.config['GOOGLE_MAPS_API_KEY'] = os.getenv('GOOGLE_MAPS_API_KEY')
 # Connect Database and Extensions
 # FIX: Restrict origins explicitly to your frontend server and allow session credentials!
 CORS(
-    app, 
-    origins=["http://127.0.0.1:5500", "http://localhost:5500"], 
-    supports_credentials=True
+    app,
+    supports_credentials=True,
+    origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
+    ]
 )
 db.init_app(app)
 

@@ -3,22 +3,50 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Shop
 
 auth_bp = Blueprint('auth', __name__)
+@auth_bp.route('/me')
+def me():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user = db.session.get(User, session['user_id'])
+
+    return jsonify({
+        'id': user.id,
+        'email': user.email,
+        'name': user.name,
+        'role': user.role
+    })
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    data = request.json
+    data = request.get_json()
+
     if not data.get('email') or not data.get('password'):
         return jsonify({'error': 'Email and password required'}), 400
-    
-    user = db.session.scalars(db.select(User).filter_by(email=data['email'])).first()
+
+    user = db.session.scalars(
+        db.select(User).filter_by(email=data['email'])
+    ).first()
+
     if not user or not check_password_hash(user.password, data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401
-    
+
     if user.role == 'admin' and not user.is_verified:
         return jsonify({'error': 'Admin account not verified'}), 403
-    
+
+    session.clear()
     session['user_id'] = user.id
-    return jsonify({'message': 'Logged in', 'user': {'id': user.id, 'email': user.email, 'name': user.name, 'role': user.role}}), 200
+    session.permanent = True
+
+    return jsonify({
+        'message': 'Logged in',
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'name': user.name,
+            'role': user.role
+        }
+    }), 200
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
