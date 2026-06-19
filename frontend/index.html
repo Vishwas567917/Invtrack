@@ -12,7 +12,7 @@
       referrerpolicy="no-referrer"
     />
     <script
-      src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry&callback=loadInitialData"
+      src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"
       async
       defer
     ></script>
@@ -247,6 +247,8 @@
               >
                 + Add Item
               </button>
+
+              <p id="test"></p>
               <button
                 class="btn btn-success"
                 onclick="findOptimalShops()"
@@ -478,6 +480,6 @@
       </div>
     </div>
 
-    <script src="./script.js"></script>
+    <script src="./script.js" defer></script>
   </body>
 </html>

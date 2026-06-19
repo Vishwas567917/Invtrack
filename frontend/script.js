@@ -151,6 +151,9 @@ function handleLogout() {
 function showApp() {
   document.getElementById("authPage").classList.remove("active");
   document.getElementById("mainApp").classList.add("active");
+
+  if (!currentUser) return;
+
   renderNavBar();
   renderSidebar();
   loadInitialData();
@@ -221,6 +224,8 @@ function showSection(sectionName, event) {
 }
 
 async function loadInitialData() {
+  if (!currentUser) return;
+
   if (currentUser.role === "customer") {
     await loadShops();
   } else if (currentUser.role === "shopkeeper") {
@@ -308,23 +313,64 @@ function addShoppingListItem() {
     name: "",
     quantity: 1,
   });
+
+  console.log("Shopping List:", shoppingListItems);
+
   renderShoppingList();
 }
 
 function renderShoppingList() {
   const container = document.getElementById("shoppingListItems");
+
+  if (!container) {
+    console.error("shoppingListItems element not found");
+    return;
+  }
+
   container.innerHTML = "";
 
   shoppingListItems.forEach((item, idx) => {
     const div = document.createElement("div");
     div.className = "shopping-list-item";
+
     div.innerHTML = `
-      <input type="text" placeholder="Product name" value="${item.name}" 
-          oninput="shoppingListItems[${idx}].name = this.value">
-      <input type="number" placeholder="Qty" value="${item.quantity}" min="1"
-          oninput="shoppingListItems[${idx}].quantity = parseInt(this.value) || 1">
-      <button class="btn btn-danger" onclick="removeShoppingItem(${idx})" style="width: auto; padding: 8px; font-size: 12px;">×</button>
+      <input
+        type="text"
+        placeholder="Product name"
+        value="${item.name}"
+      >
+
+      <input
+        type="number"
+        placeholder="Qty"
+        value="${item.quantity}"
+        min="1"
+      >
+
+      <button
+        class="btn btn-danger"
+        style="width:auto;padding:8px;font-size:12px;"
+      >
+        ×
+      </button>
     `;
+
+    const textInput = div.querySelector('input[type="text"]');
+    const qtyInput = div.querySelector('input[type="number"]');
+    const removeBtn = div.querySelector("button");
+
+    textInput.addEventListener("input", (e) => {
+      shoppingListItems[idx].name = e.target.value;
+    });
+
+    qtyInput.addEventListener("input", (e) => {
+      shoppingListItems[idx].quantity = parseInt(e.target.value) || 1;
+    });
+
+    removeBtn.addEventListener("click", () => {
+      removeShoppingItem(idx);
+    });
+
     container.appendChild(div);
   });
 }
