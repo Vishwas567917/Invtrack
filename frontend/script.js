@@ -3,9 +3,13 @@ let currentUser = null;
 let map = null;
 let shoppingListItems = [];
 
+let directionsService = null;
+let directionsRenderer = null;
+let userCurrentLat = 28.6139;
+let userCurrentLon = 77.209;
+
 window.shopItemsCache = {};
 
-// ===== ALERT SYSTEM (Fixed: now works inside main app, not just auth page) =====
 function showAlert(message, type = "success") {
   const alerts = document.querySelectorAll(".alert");
   alerts.forEach((alert) => {
@@ -17,27 +21,93 @@ function showAlert(message, type = "success") {
   });
 }
 
-// ===== SHOPPING LIST STATE HELPER =====
 function updateItem(idx, field, value) {
   if (shoppingListItems[idx]) {
     shoppingListItems[idx][field] = value;
   }
 }
 
-// ===== AUTO-LOGIN =====
+async function initializeGoogleMapsEcosystem() {
+  if (typeof google !== "undefined") return;
+  if (!currentUser) {
+    console.log("⚠️ No current user logged in. Skipping maps initialization.");
+    return;
+  }
+
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    if (currentUser.token) {
+      headers["Authorization"] = `Bearer ${currentUser.token}`;
+    }
+
+    if (currentUser.id || currentUser._id) {
+      headers["X-User-Id"] = currentUser.id || currentUser._id;
+    }
+
+    const response = await fetch(`${API_BASE}/config/maps-key`, {
+      method: "GET",
+      headers: headers,
+      credentials: "include",
+    });
+
+    if (response.status === 401) {
+      throw new Error(
+        "Backend rejected request with 401 Unauthorized. Check token/session setup.",
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `System API configuration failed with status: ${response.status}`,
+      );
+    }
+
+    const data = await response.json();
+    const apiKey = data.apiKey;
+
+    if (!apiKey) {
+      throw new Error("Backend returned an empty API key.");
+    }
+
+    const mapsScript = document.createElement("script");
+    mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+    mapsScript.async = true;
+    mapsScript.defer = true;
+
+    mapsScript.onload = () => {
+      console.log("🗺️ Google Maps scripts injected and compiled successfully!");
+      if (currentUser && currentUser.role === "customer") {
+        loadShops();
+      }
+    };
+
+    document.head.appendChild(mapsScript);
+  } catch (error) {
+    console.error(
+      "🚨 Critical Error loading Google Maps API layout context:",
+      error,
+    );
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   const savedUser = localStorage.getItem("currentUser");
   if (savedUser) {
     try {
       currentUser = JSON.parse(savedUser);
       showApp();
+      if (currentUser.role === "customer") {
+        initializeGoogleMapsEcosystem();
+      }
     } catch (e) {
       localStorage.removeItem("currentUser");
     }
   }
 });
 
-// ===== AUTH FUNCTIONS =====
 function switchTab(tab) {
   const loginForm = document.getElementById("loginForm");
   const signupForm = document.getElementById("signupForm");
@@ -50,18 +120,20 @@ function switchTab(tab) {
     signupForm.style.display = "block";
   }
 
-  document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
+  document
+    .querySelectorAll(".auth-tab")
+    .forEach((t) => t.classList.remove("active"));
   document.querySelectorAll(".auth-tab").forEach((button) => {
-    if (tab === "login" && button.getAttribute("onclick").includes("login")) {
-      button.classList.add("active");
-    } else if (tab === "signup" && button.getAttribute("onclick").includes("signup")) {
+    if (button.getAttribute("onclick").includes(tab)) {
       button.classList.add("active");
     }
   });
 }
 
 function selectRole(btn, role) {
-  document.querySelectorAll(".role-btn").forEach((b) => b.classList.remove("active"));
+  document
+    .querySelectorAll(".role-btn")
+    .forEach((b) => b.classList.remove("active"));
   btn.classList.add("active");
   const shopFields = document.getElementById("shopkeeperFields");
   shopFields.style.display = role === "shopkeeper" ? "block" : "none";
@@ -86,6 +158,11 @@ async function handleLogin() {
     }
     currentUser = data.user;
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+    if (currentUser.role === "customer") {
+      await initializeGoogleMapsEcosystem();
+    }
+
     showApp();
   } catch (error) {
     showAlert("Connection error. Is the backend running?", "danger");
@@ -98,7 +175,9 @@ async function handleSignup() {
   const password = document.getElementById("signupPassword").value;
 
   const activeRoleBtn = document.querySelector(".role-btn.active");
-  const role = activeRoleBtn ? activeRoleBtn.textContent.trim().toLowerCase() : "customer";
+  const role = activeRoleBtn
+    ? activeRoleBtn.textContent.trim().toLowerCase()
+    : "customer";
 
   let body = { name, email, password, role };
 
@@ -130,6 +209,11 @@ async function handleSignup() {
     currentUser = data.user;
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
     showAlert("Account created successfully!", "success");
+
+    if (currentUser.role === "customer") {
+      await initializeGoogleMapsEcosystem();
+    }
+
     showApp();
   } catch (error) {
     showAlert("Connection error. Is the backend running?", "danger");
@@ -141,9 +225,11 @@ function handleLogout() {
   localStorage.removeItem("currentUser");
   document.getElementById("authPage").className = "page active";
   document.getElementById("mainApp").className = "page";
+  map = null;
+  directionsService = null;
+  directionsRenderer = null;
 }
 
-// ===== APP FUNCTIONS =====
 function showApp() {
   document.getElementById("authPage").classList.remove("active");
   document.getElementById("mainApp").classList.add("active");
@@ -155,7 +241,8 @@ function showApp() {
 
 function renderNavBar() {
   document.getElementById("userName").textContent = currentUser.name;
-  document.getElementById("userRole").textContent = currentUser.role.toUpperCase();
+  document.getElementById("userRole").textContent =
+    currentUser.role.toUpperCase();
 }
 
 function renderSidebar() {
@@ -174,7 +261,11 @@ function renderSidebar() {
       { icon: "fas fa-receipt", label: "Orders", section: "orders-shop" },
     ],
     admin: [
-      { icon: "fas fa-tachometer-alt", label: "Dashboard", section: "admin-dashboard" },
+      {
+        icon: "fas fa-tachometer-alt",
+        label: "Dashboard",
+        section: "admin-dashboard",
+      },
       { icon: "fas fa-users", label: "Users", section: "users" },
       { icon: "fas fa-lock", label: "Security", section: "security" },
     ],
@@ -191,11 +282,15 @@ function renderSidebar() {
 }
 
 function showSection(sectionName, event) {
-  document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
+  document
+    .querySelectorAll(".section")
+    .forEach((s) => s.classList.remove("active"));
   const targetSection = document.getElementById(`section-${sectionName}`);
   if (targetSection) targetSection.classList.add("active");
 
-  document.querySelectorAll(".sidebar-item").forEach((item) => item.classList.remove("active"));
+  document
+    .querySelectorAll(".sidebar-item")
+    .forEach((item) => item.classList.remove("active"));
   if (event && event.currentTarget) {
     event.currentTarget.classList.add("active");
   }
@@ -222,28 +317,71 @@ async function loadInitialData() {
   }
 }
 
-// ===== CUSTOMER FUNCTIONS =====
 async function loadShops() {
+  if (typeof google === "undefined") {
+    console.log(
+      "Waiting for Google Maps dynamic dependency tags to finish mounting...",
+    );
+    return;
+  }
+
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         initMap(pos.coords.latitude, pos.coords.longitude);
         fetchShops(pos.coords.latitude, pos.coords.longitude);
       },
-      () => fetchShops(28.6139, 77.209)
+      () => fetchShops(28.6139, 77.209),
     );
   } else {
     fetchShops(28.6139, 77.209);
   }
 }
 
-function initMap(lat, lon) {
+async function initMap(lat, lon) {
   const mapElement = document.getElementById("map");
   if (!mapElement || typeof google === "undefined") return;
+
+  userCurrentLat = lat;
+  userCurrentLon = lon;
   mapElement.style.display = "block";
-  map = new google.maps.Map(mapElement, { zoom: 13, center: { lat, lng: lon } });
-  new google.maps.Marker({ position: { lat, lng: lon }, map, title: "Your Location" });
+
+  map = new google.maps.Map(mapElement, {
+    zoom: 13,
+    center: { lat, lng: lon },
+    mapId: "INVTRACK_MAP_ID",
+  });
+
+  directionsService = new google.maps.DirectionsService();
+  directionsRenderer = new google.maps.DirectionsRenderer({
+    map: map,
+    suppressMarkers: false,
+  });
+
+  try {
+    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+    new AdvancedMarkerElement({
+      position: { lat, lng: lon },
+      map,
+      title: "Your Location",
+    });
+  } catch (err) {
+    console.error("⚠️ Failed to load Advanced Marker library: ", err);
+    new google.maps.Marker({
+      position: { lat, lng: lon },
+      map,
+      title: "Your Location (Fallback)",
+    });
+  }
 }
+
+window.initMapWrapper = function () {
+  console.log("Google Maps API callback triggered securely.");
+  if (currentUser && currentUser.role === "customer") {
+    loadShops();
+  }
+};
 
 async function fetchShops(lat, lon) {
   try {
@@ -257,32 +395,89 @@ async function fetchShops(lat, lon) {
       return;
     }
 
+    let AdvancedMarker = null;
+    if (map && typeof google !== "undefined") {
+      try {
+        const { AdvancedMarkerElement } =
+          await google.maps.importLibrary("marker");
+        AdvancedMarker = AdvancedMarkerElement;
+      } catch (err) {
+        console.warn(
+          "⚠️ Google Maps Advanced Marker library failed to load, switching to legacy fallback.",
+          err,
+        );
+      }
+    }
+
     shops.forEach((shop) => {
       const card = document.createElement("div");
       card.className = "shop-card";
+
       card.innerHTML = `
         <div class="shop-name">${shop.name || shop.shop_name}</div>
         <div class="shop-distance">📍 ${(shop.distance || 0).toFixed(1)} km away</div>
         <div style="margin-top:0.5rem; color:#6b7280; font-size:12px;">⭐ ${shop.rating || "N/A"}</div>
-        <button class="btn btn-primary" onclick="viewShopProducts('${shop.id || shop._id}')"
-          style="margin-top:1rem; padding:8px; font-size:12px;">View Products</button>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <button class="btn btn-primary" onclick="viewShopProducts('${shop.id || shop._id}')"
+            style="padding:8px; font-size:12px; flex: 1;">View Products</button>
+          <button class="btn btn-success" onclick="calculateRoute(${shop.latitude}, ${shop.longitude})"
+            style="padding:8px; font-size:12px; flex: 1;"><i class="fas fa-directions"></i> Route</button>
+        </div>
       `;
       container.appendChild(card);
 
       if (map && typeof google !== "undefined") {
-        new google.maps.Marker({
-          position: { lat: parseFloat(shop.latitude), lng: parseFloat(shop.longitude) },
-          map,
-          title: shop.name || shop.shop_name,
-        });
+        const position = {
+          lat: parseFloat(shop.latitude),
+          lng: parseFloat(shop.longitude),
+        };
+
+        if (AdvancedMarker) {
+          new AdvancedMarker({
+            position: position,
+            map: map,
+            title: shop.name || shop.shop_name,
+          });
+        } else {
+          new google.maps.Marker({
+            position: position,
+            map: map,
+            title: shop.name || shop.shop_name,
+          });
+        }
       }
     });
   } catch (error) {
+    console.error(
+      "🚨 Error inside fetchShops runtime execution execution:",
+      error,
+    );
     showAlert("Failed to load shops", "danger");
   }
 }
 
-// View products for a specific shop (renders in a modal-style card)
+function calculateRoute(destLat, destLon) {
+  if (!directionsService || !directionsRenderer) {
+    showAlert("Map routing engine not loaded yet.", "danger");
+    return;
+  }
+
+  const request = {
+    origin: { lat: userCurrentLat, lng: userCurrentLon },
+    destination: { lat: parseFloat(destLat), lng: parseFloat(destLon) },
+    travelMode: google.maps.TravelMode.DRIVING,
+  };
+
+  directionsService.route(request, (result, status) => {
+    if (status === google.maps.DirectionsStatus.OK) {
+      directionsRenderer.setDirections(result);
+      showAlert("Route calculated! Follow the highlighted path.", "success");
+    } else {
+      showAlert("Directions calculation request failed: " + status, "danger");
+    }
+  });
+}
+
 async function viewShopProducts(shopId) {
   try {
     const response = await fetch(`${API_BASE}/shops/${shopId}/products`);
@@ -303,14 +498,18 @@ async function viewShopProducts(shopId) {
         <table class="product-table">
           <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th></tr></thead>
           <tbody>
-            ${products.map(p => `
+            ${products
+              .map(
+                (p) => `
               <tr>
                 <td>${p.name}</td>
                 <td>${p.category || "—"}</td>
                 <td>₹${p.price}</td>
                 <td>${p.quantity > 0 ? p.quantity + " units" : "<span style='color:var(--danger)'>Out of stock</span>"}</td>
               </tr>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -321,7 +520,6 @@ async function viewShopProducts(shopId) {
   }
 }
 
-// ===== SHOPPING LIST (Fixed: inline oninput, validation before search) =====
 function addShoppingListItem() {
   shoppingListItems.push({ id: Date.now(), name: "", quantity: 1 });
   renderShoppingList();
@@ -353,7 +551,6 @@ function removeShoppingItem(idx) {
 }
 
 async function findOptimalShops() {
-  // Filter out items with empty names
   const validItems = shoppingListItems.filter((i) => i.name.trim() !== "");
 
   if (validItems.length === 0) {
@@ -368,7 +565,10 @@ async function findOptimalShops() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          items: validItems.map((item) => ({ name: item.name, quantity: item.quantity })),
+          items: validItems.map((item) => ({
+            name: item.name.trim(),
+            quantity: item.quantity,
+          })),
           latitude: lat,
           longitude: lon,
         }),
@@ -383,7 +583,7 @@ async function findOptimalShops() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => handleFetch(pos.coords.latitude, pos.coords.longitude),
-      () => handleFetch(28.6139, 77.209)
+      () => handleFetch(28.6139, 77.209),
     );
   } else {
     handleFetch(28.6139, 77.209);
@@ -395,7 +595,8 @@ function displaySearchResults(data) {
   let html = "<h3>Results:</h3>";
 
   if (data.complete) {
-    html += '<p style="color:var(--success); margin-bottom:1rem;">✓ All items found!</p>';
+    html +=
+      '<p style="color:var(--success); margin-bottom:1rem;">✓ All items found!</p>';
   } else {
     const missingNames = data.missing_items
       ? data.missing_items.map((i) => i.name).join(", ")
@@ -411,15 +612,23 @@ function displaySearchResults(data) {
         <div class="card">
           <h4>${shop.name} — ${(shop.distance || 0).toFixed(1)} km away</h4>
           <ul style="margin-left:1.5rem; margin-top:1rem; list-style-type:disc;">
-            ${shop.items.map((item) =>
-              `<li>${item.name} x${item.quantity_needed || item.quantity} @ ₹${item.price}</li>`
-            ).join("")}
+            ${shop.items
+              .map(
+                (item) =>
+                  `<li>${item.name} x${item.quantity_needed || item.quantity} @ ₹${item.price}</li>`,
+              )
+              .join("")}
           </ul>
-          <button class="btn btn-success"
-            onclick="proceedToCheckout('${shop.id || shop._id}', '${uniqueShopKey}')"
-            style="margin-top:1rem; width:auto;">
-            Order from ${shop.name}
-          </button>
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button class="btn btn-success"
+              onclick="proceedToCheckout('${shop.id || shop._id}', '${uniqueShopKey}')"
+              style="flex: 1;">
+              Order from ${shop.name}
+            </button>
+            <button class="btn btn-primary" 
+              onclick="calculateRoute(${shop.latitude}, ${shop.longitude})"
+              style="flex: 1;"><i class="fas fa-directions"></i> Route</button>
+          </div>
         </div>
       `;
     });
@@ -463,7 +672,9 @@ async function proceedToCheckout(shopId, cacheKey) {
 
 async function loadCustomerOrders() {
   try {
-    const response = await fetch(`${API_BASE}/orders`, { credentials: "include" });
+    const response = await fetch(`${API_BASE}/orders`, {
+      credentials: "include",
+    });
     const orders = await response.json();
     const container = document.getElementById("ordersContainer");
     if (!container) return;
@@ -473,7 +684,9 @@ async function loadCustomerOrders() {
       return;
     }
 
-    container.innerHTML = orders.map((order) => `
+    container.innerHTML = orders
+      .map(
+        (order) => `
       <div class="card">
         <h4>Order #${order.id || order._id}</h4>
         <p style="margin:0.25rem 0; color:#4b5563;">Store: <strong>${order.shop_name || "Partner Store"}</strong></p>
@@ -484,22 +697,29 @@ async function loadCustomerOrders() {
         </p>
         <p style="margin:0.5rem 0; font-weight:600;">Total: ₹${order.total || order.total_price}</p>
       </div>
-    `).join("");
+    `,
+      )
+      .join("");
   } catch (error) {
     showAlert("Failed to load orders", "danger");
   }
 }
 
-// ===== SHOPKEEPER FUNCTIONS (Fixed: validation + credentials) =====
+// ===== SHOPKEEPER FUNCTIONS =====
 async function loadDashboard() {
   try {
-    const response = await fetch(`${API_BASE}/shopkeeper/dashboard`, { credentials: "include" });
+    const response = await fetch(`${API_BASE}/shopkeeper/dashboard`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
-    document.getElementById("totalProducts").textContent = data.total_products || 0;
+    document.getElementById("totalProducts").textContent =
+      data.total_products || 0;
     document.getElementById("ordersToday").textContent = data.orders_today || 0;
-    document.getElementById("revenueToday").textContent = "₹" + (data.revenue_today || 0);
-    document.getElementById("lowStockCount").textContent = data.low_stock_items || 0;
+    document.getElementById("revenueToday").textContent =
+      "₹" + (data.revenue_today || 0);
+    document.getElementById("lowStockCount").textContent =
+      data.low_stock_items || 0;
 
     loadInventory();
     loadShopOrders();
@@ -510,12 +730,15 @@ async function loadDashboard() {
 
 async function loadInventory() {
   try {
-    const response = await fetch(`${API_BASE}/shopkeeper/products`, { credentials: "include" });
+    const response = await fetch(`${API_BASE}/shopkeeper/products`, {
+      credentials: "include",
+    });
     const products = await response.json();
     const container = document.getElementById("inventoryTable");
 
     if (!products || products.length === 0) {
-      container.innerHTML = "<p>No products added yet. Click '+ Add Product' to get started.</p>";
+      container.innerHTML =
+        "<p>No products added yet. Click '+ Add Product' to get started.</p>";
       return;
     }
 
@@ -523,7 +746,9 @@ async function loadInventory() {
       <table class="product-table">
         <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Qty</th><th>Action</th></tr></thead>
         <tbody>
-          ${products.map((p) => `
+          ${products
+            .map(
+              (p) => `
             <tr>
               <td>${p.name}</td>
               <td>${p.category || "—"}</td>
@@ -535,7 +760,9 @@ async function loadInventory() {
                   style="width:auto; padding:6px 12px; font-size:12px;">Delete</button>
               </td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     `;
@@ -546,7 +773,9 @@ async function loadInventory() {
 
 async function loadShopOrders() {
   try {
-    const response = await fetch(`${API_BASE}/shopkeeper/orders`, { credentials: "include" });
+    const response = await fetch(`${API_BASE}/shopkeeper/orders`, {
+      credentials: "include",
+    });
     const orders = await response.json();
     const container = document.getElementById("shopOrdersContainer");
 
@@ -555,23 +784,27 @@ async function loadShopOrders() {
       return;
     }
 
-    container.innerHTML = orders.map((order) => `
+    container.innerHTML = orders
+      .map(
+        (order) => `
       <div class="card">
         <h4>Order #${order.id || order._id} from ${order.customer_name || "Customer"}</h4>
         <p style="margin:0.5rem 0; color:#6b7280;">Total: ₹${order.total || order.total_price}</p>
-        ${order.status !== "delivered"
-          ? `<button class="btn btn-success" onclick="markDelivered('${order.id || order._id}')"
+        ${
+          order.status !== "delivered"
+            ? `<button class="btn btn-success" onclick="markDelivered('${order.id || order._id}')"
               style="margin-top:1rem; width:auto;">Mark Delivered</button>`
-          : `<span class="user-badge" style="background:var(--success)">Delivered</span>`
+            : `<span class="user-badge" style="background:var(--success)">Delivered</span>`
         }
       </div>
-    `).join("");
+    `,
+      )
+      .join("");
   } catch (error) {
     showAlert("Failed to load orders", "danger");
   }
 }
 
-// Fixed: Added validation + credentials: "include"
 async function addProduct() {
   const name = document.getElementById("productName").value.trim();
   const category = document.getElementById("productCategory").value.trim();
@@ -596,7 +829,13 @@ async function addProduct() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ name, category, price, quantity, description: "" }),
+      body: JSON.stringify({
+        name,
+        category,
+        price,
+        quantity,
+        description: "",
+      }),
     });
 
     const data = await response.json();
@@ -621,10 +860,13 @@ async function addProduct() {
 async function deleteProduct(productId) {
   if (!confirm("Delete this product?")) return;
   try {
-    const response = await fetch(`${API_BASE}/shopkeeper/products/${productId}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${API_BASE}/shopkeeper/products/${productId}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
     if (!response.ok) {
       showAlert("Failed to delete product", "danger");
       return;
@@ -657,16 +899,18 @@ async function markDelivered(orderId) {
   }
 }
 
-// ===== ADMIN FUNCTIONS =====
 async function loadAdminDashboard() {
   try {
-    const response = await fetch(`${API_BASE}/admin/dashboard`, { credentials: "include" });
+    const response = await fetch(`${API_BASE}/admin/dashboard`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     document.getElementById("totalUsers").textContent = data.total_users || 0;
     document.getElementById("totalShops").textContent = data.total_shops || 0;
     document.getElementById("adminOrders").textContent = data.total_orders || 0;
-    document.getElementById("adminRevenue").textContent = "₹" + (data.total_revenue || 0);
+    document.getElementById("adminRevenue").textContent =
+      "₹" + (data.total_revenue || 0);
 
     loadAllUsers();
   } catch (error) {
@@ -676,7 +920,9 @@ async function loadAdminDashboard() {
 
 async function loadAllUsers() {
   try {
-    const response = await fetch(`${API_BASE}/admin/users`, { credentials: "include" });
+    const response = await fetch(`${API_BASE}/admin/users`, {
+      credentials: "include",
+    });
     const users = await response.json();
     const container = document.getElementById("usersTable");
 
@@ -684,7 +930,9 @@ async function loadAllUsers() {
       <table class="product-table">
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead>
         <tbody>
-          ${users.map((user) => `
+          ${users
+            .map(
+              (user) => `
             <tr>
               <td>${user.name}</td>
               <td>${user.email}</td>
@@ -695,7 +943,9 @@ async function loadAllUsers() {
                   style="width:auto; padding:6px 12px; font-size:12px;">Delete</button>
               </td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     `;
@@ -743,7 +993,6 @@ async function verifyAdmin() {
   }
 }
 
-// ===== UTILS =====
 function openAddProductModal() {
   document.getElementById("addProductModal").classList.add("active");
 }

@@ -1,4 +1,5 @@
 from math import radians, cos, sin, asin, sqrt
+from sqlalchemy import func
 from models import db, Shop, Product
 
 def haversine_distance(lat1, lon1, lat2, lon2):
@@ -24,7 +25,10 @@ def find_shops_for_items(items, user_lat, user_lon, max_shops=3):
         
         for item in items:
             product = db.session.scalars(
-                db.select(Product).filter_by(shop_id=shop.id, name=item['name'])
+                db.select(Product).filter(
+                    Product.shop_id == shop.id,
+                    func.lower(Product.name) == item['name'].lower()
+                )
             ).first()
             
             if product and product.quantity >= item['quantity']:
@@ -44,7 +48,7 @@ def find_shops_for_items(items, user_lat, user_lon, max_shops=3):
         
         fulfilled = []
         for item in remaining_items:
-            found = next((x for x in shop_data['available_items'] if x['product'].name == item['name']), None)
+            found = next((x for x in shop_data['available_items'] if x['product'].name.lower() == item['name'].lower()), None)
             if found:
                 fulfilled.append(item)
         
