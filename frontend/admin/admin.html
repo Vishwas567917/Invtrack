@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InvTrack - Administrator Core</title>
+    <link rel="stylesheet" href="./admin.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-brand">
+        <i class="fas fa-shield-alt"></i> InvTrack Operations HQ
+      </div>
+      <div class="navbar-user">
+        <span id="userName" style="font-size: 14px"></span>
+        <span class="user-badge" style="background: #ef4444; color: #fff"
+          >Global Admin</span
+        >
+        <button class="logout-btn" onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="main-container">
+      <div class="sidebar">
+        <button
+          class="sidebar-btn active"
+          onclick="switchSection('admin-dashboard')"
+        >
+          <i class="fas fa-pie-chart"></i> Platform Core metrics
+        </button>
+        <button class="sidebar-btn" onclick="switchSection('users')">
+          <i class="fas fa-users-gear"></i> Manage User Profiles
+        </button>
+        <button class="sidebar-btn" onclick="switchSection('security')">
+          <i class="fas fa-key"></i> Operational Vault
+        </button>
+      </div>
+
+      <div class="content">
+        <div id="section-admin-dashboard" class="section active">
+          <h2>🛡️ Global Operational Diagnostics</h2>
+          <div class="grid grid-2">
+            <div class="card">
+              <div
+                id="totalUsers"
+                style="
+                  font-size: 28px;
+                  font-weight: 700;
+                  color: #2563eb;
+                  margin-bottom: 0.5rem;
+                "
+              >
+                0
+              </div>
+              <div style="color: #6b7280">Total Accounts Provisioned</div>
+            </div>
+            <div class="card">
+              <div
+                id="totalShops"
+                style="
+                  font-size: 28px;
+                  font-weight: 700;
+                  color: #2563eb;
+                  margin-bottom: 0.5rem;
+                "
+              >
+                0
+              </div>
+              <div style="color: #6b7280">Active Storefront Registries</div>
+            </div>
+            <div class="card">
+              <div
+                id="adminOrders"
+                style="
+                  font-size: 28px;
+                  font-weight: 700;
+                  color: #10b981;
+                  margin-bottom: 0.5rem;
+                "
+              >
+                0
+              </div>
+              <div style="color: #6b7280">Total Orders Settled Systemwide</div>
+            </div>
+            <div class="card">
+              <div
+                id="adminRevenue"
+                style="
+                  font-size: 28px;
+                  font-weight: 700;
+                  color: #2563eb;
+                  margin-bottom: 0.5rem;
+                "
+              >
+                ₹0
+              </div>
+              <div style="color: #6b7280">Gross Network Volume Throughput</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="section-users" class="section">
+          <h2>👥 Platform Account Audit Ledger</h2>
+          <div id="usersTable"></div>
+        </div>
+
+        <div id="section-security" class="section">
+          <h2>🔐 Network Administrative Escalation Matrix</h2>
+          <div class="card">
+            <p style="margin-bottom: 1rem">
+              Escalate or Verify Administrative Credentials Permissions Registry
+            </p>
+            <div style="display: flex; gap: 0.5rem">
+              <input
+                type="email"
+                id="adminEmail"
+                placeholder="target-admin@email.com"
+                style="
+                  flex: 1;
+                  padding: 8px;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 6px;
+                "
+              />
+              <button
+                class="btn btn-primary"
+                onclick="verifyAdmin()"
+                style="width: auto"
+              >
+                Authorize Access Permissions
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./admin.js" defer></script>
+  </body>
+</html>

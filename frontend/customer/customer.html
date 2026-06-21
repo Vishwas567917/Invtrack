@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InvTrack - Customer Portal</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="./customer.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-brand">
+        <i class="fas fa-shopping-bag"></i> InvTrack Customer
+      </div>
+      <div class="navbar-user">
+        <span id="userName" style="font-size: 14px"></span>
+        <span class="user-badge" style="background: #2563eb; color: #fff"
+          >Customer</span
+        >
+        <button class="logout-btn" onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="main-container">
+      <div class="sidebar">
+        <button
+          class="sidebar-btn active"
+          onclick="showSection('shops', event)"
+        >
+          <i class="fas fa-store"></i> Nearby Shops
+        </button>
+        <button
+          class="sidebar-btn"
+          onclick="showSection('shopping-list', event)"
+        >
+          <i class="fas fa-list-check"></i> Shopping List
+        </button>
+        <button class="sidebar-btn" onclick="showSection('orders', event)">
+          <i class="fas fa-box"></i> My Orders
+        </button>
+      </div>
+
+      <div class="content">
+        <div id="section-shops" class="section active">
+          <h2>🏪 Nearby Shops</h2>
+          <div
+            id="map"
+            style="
+              height: 380px;
+              width: 100%;
+              border-radius: 8px;
+              margin-bottom: 1.5rem;
+            "
+          ></div>
+          <div id="shopsContainer" class="grid grid-2"></div>
+        </div>
+
+        <div id="section-shopping-list" class="section">
+          <h2>🛒 Smart Shopping List Optimizer</h2>
+          <div class="card">
+            <p style="margin-bottom: 1.25rem; color: #4b5563">
+              Build your customized inventory request list and choose your
+              transit optimization routine strategy.
+            </p>
+
+            <div
+              class="strategy-selector"
+              style="
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+                padding: 0.5rem;
+                background: #f3f4f6;
+                border-radius: 8px;
+              "
+            >
+              <label
+                style="
+                  flex: 1;
+                  display: flex;
+                  align-items: center;
+                  gap: 0.5rem;
+                  padding: 0.75rem;
+                  background: #fff;
+                  border: 2px solid #2563eb;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+              >
+                <input
+                  type="radio"
+                  name="optimizationStrategy"
+                  value="convenience"
+                  checked
+                  style="accent-color: #2563eb"
+                />
+                <div>
+                  <strong>Convenience Mode</strong>
+                  <div style="font-size: 11px; color: #6b7280">
+                    Single store fulfillment route
+                  </div>
+                </div>
+              </label>
+              <label
+                style="
+                  flex: 1;
+                  display: flex;
+                  align-items: center;
+                  gap: 0.5rem;
+                  padding: 0.75rem;
+                  background: #fff;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 6px;
+                  cursor: pointer;
+                "
+                id="frugalLabel"
+              >
+                <input
+                  type="radio"
+                  name="optimizationStrategy"
+                  value="frugal"
+                  style="accent-color: #2563eb"
+                />
+                <div>
+                  <strong>Frugal Mode</strong>
+                  <div style="font-size: 11px; color: #6b7280">
+                    Split cross-shop lowest pricing
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div id="shoppingListItems"></div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1rem">
+              <button
+                class="btn btn-primary"
+                onclick="addShoppingListItem()"
+                style="width: auto"
+              >
+                + Add Item
+              </button>
+              <button
+                class="btn btn-success"
+                onclick="findOptimalShops()"
+                style="width: auto"
+              >
+                <i class="fas fa-route"></i> Calculate Best Routing
+              </button>
+            </div>
+          </div>
+
+          <div id="searchResults" style="margin-top: 2rem"></div>
+        </div>
+
+        <div id="section-orders" class="section">
+          <h2>📦 My Orders History</h2>
+          <div id="ordersContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" src="./customer.js"></script>
+  </body>
+</html>

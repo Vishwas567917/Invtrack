@@ -4,7 +4,6 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 
-# Load variables from .env file at the very start
 load_dotenv()
 
 from models import db, User, Shop, Product
@@ -15,7 +14,6 @@ from routes.admin import admin_bp
 
 app = Flask(__name__)
 
-# Read configuration from environment variables with fallback settings
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -24,11 +22,13 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///invtrack.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Store the Google Maps API Key globally inside the Flask config context
-app.config['GOOGLE_MAPS_API_KEY'] = os.getenv('GOOGLE_MAPS_API_KEY')
+unified_api_key = os.getenv('GOOGLE_MAPS_API_KEY')
 
-# Connect Database and Extensions
-# Explicitly allow cross-origin requests to pass matching cookie parameters back and forth
+app.config['ROUTES_API_KEY'] = unified_api_key or os.getenv('ROUTES_API')
+app.config['PLACES_API_KEY'] = unified_api_key or os.getenv('PLACES_API')
+app.config['GEOCODING_API_KEY'] = unified_api_key or os.getenv('GEOCODING_API')
+app.config['GEOLOCATION_API_KEY'] = unified_api_key or os.getenv('GEOLOCATION_API')
+
 CORS(
     app,
     supports_credentials=True,
@@ -38,34 +38,10 @@ CORS(
     ]
 )
 db.init_app(app)
-
-# Register Blueprints with clean routing prefixes
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(shopkeeper_bp, url_prefix='/api/shopkeeper')
 app.register_blueprint(customer_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
-
-# ===== SECURE CONFIGURATION ENDPOINT =====
-@app.route('/api/config/maps-key', methods=['GET'])
-def get_maps_key():
-    """
-    Exposes the Google Maps API Key dynamically to authorized clients.
-    Checks session verification data or Authorization headers fallback to prevent 401 traps.
-    """
-    # 1. Attempt verification via Flask session cookie storage tracking definitions
-    user_id = session.get('user_id') or session.get('_user_id')
-    
-    # 2. If session tracking fails, query request metadata properties directly to bypass cors traps
-    if not user_id:
-        # If your frontend manually strips credentials inside the auto-login DOM layer wrapper,
-        # we can relax protection strictly for local host testing instances, or validate headers:
-        pass 
-
-    api_key = app.config.get('GOOGLE_MAPS_API_KEY')
-    if not api_key:
-        return jsonify({"error": "Google Maps API Key configuration missing on backend setup"}), 500
-
-    return jsonify({"apiKey": api_key}), 200
 
 
 def init_db():
@@ -104,10 +80,10 @@ def init_db():
 if __name__ == '__main__':
     init_db()
 
-    if app.config['GOOGLE_MAPS_API_KEY']:
-        print("🗺️  Google Maps API Key detected and loaded successfully!")
+    if app.config['PLACES_API_KEY']:
+        print("🗺️  Unified Google Maps API key context loaded completely!")
     else:
-        print("⚠️  Warning: GOOGLE_MAPS_API_KEY not found in environment variables.")
+        print("⚠️  Warning: GOOGLE_MAPS_API_KEY variable is missing or unreadable in environment layouts.")
         
     print("🚀 Server running on http://localhost:5000")
     app.run(debug=True, port=5000)

@@ -1,0 +1,11 @@
+@import url("../shared/base.css");
+
+.navbar-brand {
+  color: var(--danger);
+}
+.user-badge {
+  background: var(--danger);
+}
+.card-admin {
+  border-top: 4px solid var(--danger);
+}

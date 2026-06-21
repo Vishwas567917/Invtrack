@@ -1,0 +1,12 @@
+@import url("../shared/base.css");
+
+#map {
+  width: 100%;
+  height: 380px;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+.strategy-selector label:has(input:checked) {
+  border-color: var(--primary);
+  background: #eff6ff;
+}

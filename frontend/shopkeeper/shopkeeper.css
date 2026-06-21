@@ -1,0 +1,21 @@
+@import url("../shared/base.css");
+
+.card-metric {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+.product-table th {
+  background: var(--light);
+  padding: 1rem;
+  text-align: left;
+}
+.product-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}

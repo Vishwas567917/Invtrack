@@ -1,24 +1,8 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from models import db, User, Shop, Product, Order, OrderItem
 from helpers import haversine_distance, find_shops_for_items
 
 customer_bp = Blueprint('customer', __name__)
-
-@customer_bp.route('/api/config/maps-key', methods=['GET'])
-def get_maps_key():
-    user_id = session.get('user_id') or session.get('_user_id')
-    
-    if not user_id:
-        user_id = request.headers.get('X-User-Id')
-        
-    if not user_id:
-        return jsonify({"error": "Unauthorized access. No session or user context found."}), 401
-
-    api_key = app.config.get('GOOGLE_MAPS_API_KEY')
-    if not api_key:
-        return jsonify({"error": "Google Maps API Key configuration missing on backend setup"}), 500
-
-    return jsonify({"apiKey": api_key}), 200
 
 @customer_bp.route('/shops', methods=['GET'])
 def get_shops():
@@ -30,7 +14,17 @@ def get_shops():
         distance = None
         if lat and lon:
             distance = haversine_distance(lat, lon, shop.latitude, shop.longitude)
-        shops_data.append({'id': shop.id, 'name': shop.name, 'city': shop.city, 'address': shop.address, 'latitude': shop.latitude, 'longitude': shop.longitude, 'rating': shop.rating, 'distance': distance, 'owner': shop.owner.name})
+        shops_data.append({
+            'id': shop.id, 
+            'name': shop.name, 
+            'city': shop.city, 
+            'address': shop.address, 
+            'latitude': shop.latitude, 
+            'longitude': shop.longitude, 
+            'rating': shop.rating, 
+            'distance': distance, 
+            'owner': shop.owner.name
+        })
     if lat and lon:
         shops_data.sort(key=lambda x: x['distance'])
     return jsonify(shops_data), 200
@@ -51,7 +45,6 @@ def find_shops_for_list():
     if not items or not user_lat or not user_lon:
         return jsonify({'error': 'Items and location required'}), 400
     
-    # Case-Insensitivity Fix: Normalize input names to lower-case structure
     normalized_items = []
     for item in items:
         normalized_items.append({
@@ -63,17 +56,25 @@ def find_shops_for_list():
     shops_response = []
     for shop_data in selected_shops:
         shop = shop_data['shop']
-        shops_response.append({'id': shop.id, 'name': shop.name, 'distance': round(shop_data['distance'], 2), 'latitude': shop.latitude, 'longitude': shop.longitude, 'items': [{'id': item['product'].id, 'name': item['product'].name, 'price': item['product'].price, 'quantity_needed': item['needed_qty']} for item in shop_data['available_items']]})
+        shops_response.append({
+            'id': shop.id, 
+            'name': shop.name, 
+            'distance': round(shop_data['distance'], 2), 
+            'latitude': shop.latitude, 
+            'longitude': shop.longitude, 
+            'items': [{'id': item['product'].id, 'name': item['product'].name, 'price': item['product'].price, 'quantity_needed': item['needed_qty']} for item in shop_data['available_items']]}
+        )
     
     return jsonify({'shops': shops_response, 'missing_items': missing, 'complete': len(missing) == 0}), 200
 
 @customer_bp.route('/orders/pre-order', methods=['POST'])
 def create_pre_order():
-    if 'user_id' not in session:
+    user_id = session.get('user_id') or session.get('_user_id') or request.headers.get('X-User-Id')
+    if not user_id:
         return jsonify({'error': 'Unauthorized'}), 401
     
     data = request.json
-    user = db.session.get(User, session['user_id'])
+    user = db.session.get(User, user_id)
     shop_id = data.get('shop_id')
     items = data.get('items', [])
     
@@ -90,7 +91,7 @@ def create_pre_order():
     
     order = Order(customer_id=user.id, shop_id=shop_id, total_amount=total, status='confirmed', payment_status='paid')
     db.session.add(order)
-    db.session.flush()
+    db.flush()
     
     for item in order_items:
         order_item = OrderItem(order_id=order.id, product_id=item['product'].id, quantity=item['quantity'], price=item['price'])
@@ -102,9 +103,11 @@ def create_pre_order():
 
 @customer_bp.route('/orders', methods=['GET'])
 def get_user_orders():
-    if 'user_id' not in session:
+    user_id = session.get('user_id') or session.get('_user_id') or request.headers.get('X-User-Id')
+    if not user_id:
         return jsonify({'error': 'Unauthorized'}), 401
-    user = db.session.get(User, session['user_id'])
+        
+    user = db.session.get(User, user_id)
     orders = db.session.scalars(db.select(Order).filter_by(customer_id=user.id)).all()
     orders_data = [{'id': o.id, 'shop_name': o.shop.name, 'total': o.total_amount, 'status': o.status} for o in orders]
     return jsonify(orders_data), 200

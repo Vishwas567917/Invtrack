@@ -2,9 +2,8 @@ const API_BASE = "http://localhost:5000/api";
 let currentUser = null;
 let map = null;
 let shoppingListItems = [];
+let mapMarkers = [];
 
-let directionsService = null;
-let directionsRenderer = null;
 let userCurrentLat = 28.6139;
 let userCurrentLon = 77.209;
 
@@ -27,67 +26,27 @@ function updateItem(idx, field, value) {
   }
 }
 
-async function initializeGoogleMapsEcosystem() {
-  if (typeof google !== "undefined") return;
+/**
+ * Replaced Google Maps ecosystem infrastructure loader entirely.
+ * OpenFreeMap handles tile servers natively without API authorization payloads.
+ */
+async function initializeMapLibreEcosystem() {
+  if (typeof maplibregl !== "undefined") return;
   if (!currentUser) {
     console.log("⚠️ No current user logged in. Skipping maps initialization.");
     return;
   }
 
   try {
-    const headers = {
-      "Content-Type": "application/json",
-    };
-
-    if (currentUser.token) {
-      headers["Authorization"] = `Bearer ${currentUser.token}`;
+    console.log(
+      "🗺️ OpenFreeMap Ecosystem initialized smoothly. CDNs handle layout natively.",
+    );
+    if (currentUser.role === "customer") {
+      loadShops();
     }
-
-    if (currentUser.id || currentUser._id) {
-      headers["X-User-Id"] = currentUser.id || currentUser._id;
-    }
-
-    const response = await fetch(`${API_BASE}/config/maps-key`, {
-      method: "GET",
-      headers: headers,
-      credentials: "include",
-    });
-
-    if (response.status === 401) {
-      throw new Error(
-        "Backend rejected request with 401 Unauthorized. Check token/session setup.",
-      );
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        `System API configuration failed with status: ${response.status}`,
-      );
-    }
-
-    const data = await response.json();
-    const apiKey = data.apiKey;
-
-    if (!apiKey) {
-      throw new Error("Backend returned an empty API key.");
-    }
-
-    const mapsScript = document.createElement("script");
-    mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
-    mapsScript.async = true;
-    mapsScript.defer = true;
-
-    mapsScript.onload = () => {
-      console.log("🗺️ Google Maps scripts injected and compiled successfully!");
-      if (currentUser && currentUser.role === "customer") {
-        loadShops();
-      }
-    };
-
-    document.head.appendChild(mapsScript);
   } catch (error) {
     console.error(
-      "🚨 Critical Error loading Google Maps API layout context:",
+      "🚨 Critical Error preparing map infrastructure layout context:",
       error,
     );
   }
@@ -100,7 +59,7 @@ window.addEventListener("DOMContentLoaded", () => {
       currentUser = JSON.parse(savedUser);
       showApp();
       if (currentUser.role === "customer") {
-        initializeGoogleMapsEcosystem();
+        initializeMapLibreEcosystem();
       }
     } catch (e) {
       localStorage.removeItem("currentUser");
@@ -124,7 +83,8 @@ function switchTab(tab) {
     .querySelectorAll(".auth-tab")
     .forEach((t) => t.classList.remove("active"));
   document.querySelectorAll(".auth-tab").forEach((button) => {
-    if (button.getAttribute("onclick").includes(tab)) {
+    const clickAttr = button.getAttribute("onclick");
+    if (clickAttr && clickAttr.includes(tab)) {
       button.classList.add("active");
     }
   });
@@ -136,7 +96,9 @@ function selectRole(btn, role) {
     .forEach((b) => b.classList.remove("active"));
   btn.classList.add("active");
   const shopFields = document.getElementById("shopkeeperFields");
-  shopFields.style.display = role === "shopkeeper" ? "block" : "none";
+  if (shopFields) {
+    shopFields.style.display = role === "shopkeeper" ? "block" : "none";
+  }
 }
 
 async function handleLogin() {
@@ -159,11 +121,10 @@ async function handleLogin() {
     currentUser = data.user;
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
-    if (currentUser.role === "customer") {
-      await initializeGoogleMapsEcosystem();
-    }
-
     showApp();
+    if (currentUser.role === "customer") {
+      await initializeMapLibreEcosystem();
+    }
   } catch (error) {
     showAlert("Connection error. Is the backend running?", "danger");
   }
@@ -210,11 +171,10 @@ async function handleSignup() {
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
     showAlert("Account created successfully!", "success");
 
-    if (currentUser.role === "customer") {
-      await initializeGoogleMapsEcosystem();
-    }
-
     showApp();
+    if (currentUser.role === "customer") {
+      await initializeMapLibreEcosystem();
+    }
   } catch (error) {
     showAlert("Connection error. Is the backend running?", "danger");
   }
@@ -225,9 +185,12 @@ function handleLogout() {
   localStorage.removeItem("currentUser");
   document.getElementById("authPage").className = "page active";
   document.getElementById("mainApp").className = "page";
-  map = null;
-  directionsService = null;
-  directionsRenderer = null;
+
+  if (map) {
+    map.remove();
+    map = null;
+  }
+  mapMarkers = [];
 }
 
 function showApp() {
@@ -247,6 +210,7 @@ function renderNavBar() {
 
 function renderSidebar() {
   const sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
   sidebar.innerHTML = "";
 
   const menus = {
@@ -304,6 +268,9 @@ function showSection(sectionName, event) {
   if (sectionName === "orders-shop") {
     loadShopOrders();
   }
+  if (sectionName === "shops" && map) {
+    setTimeout(() => map.resize(), 100);
+  }
 }
 
 async function loadInitialData() {
@@ -318,10 +285,8 @@ async function loadInitialData() {
 }
 
 async function loadShops() {
-  if (typeof google === "undefined") {
-    console.log(
-      "Waiting for Google Maps dynamic dependency tags to finish mounting...",
-    );
+  if (typeof maplibregl === "undefined") {
+    console.log("Waiting for MapLibre dynamic script modules to be present...");
     return;
   }
 
@@ -331,63 +296,67 @@ async function loadShops() {
         initMap(pos.coords.latitude, pos.coords.longitude);
         fetchShops(pos.coords.latitude, pos.coords.longitude);
       },
-      () => fetchShops(28.6139, 77.209),
+      () => {
+        initMap(28.6139, 77.209);
+        fetchShops(28.6139, 77.209);
+      },
     );
   } else {
+    initMap(28.6139, 77.209);
     fetchShops(28.6139, 77.209);
   }
 }
 
+/**
+ * Initializes the MapLibre Map instance using OpenFreeMap Tiles securely.
+ * ⚠️ Note: MapLibre follows GeoJSON standards, using [Longitude, Latitude] formatting.
+ */
 async function initMap(lat, lon) {
   const mapElement = document.getElementById("map");
-  if (!mapElement || typeof google === "undefined") return;
+  if (!mapElement || typeof maplibregl === "undefined") return;
 
   userCurrentLat = lat;
   userCurrentLon = lon;
   mapElement.style.display = "block";
 
-  map = new google.maps.Map(mapElement, {
-    zoom: 13,
-    center: { lat, lng: lon },
-    mapId: "INVTRACK_MAP_ID",
-  });
-
-  directionsService = new google.maps.DirectionsService();
-  directionsRenderer = new google.maps.DirectionsRenderer({
-    map: map,
-    suppressMarkers: false,
-  });
-
   try {
-    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+    if (map) {
+      map.flyTo({ center: [lon, lat], zoom: 13 });
+      return;
+    }
 
-    new AdvancedMarkerElement({
-      position: { lat, lng: lon },
-      map,
-      title: "Your Location",
+    map = new maplibregl.Map({
+      container: "map",
+      style: "https://tiles.openfreemap.org/styles/liberty",
+      center: [lon, lat],
+      zoom: 13,
     });
-  } catch (err) {
-    console.error("⚠️ Failed to load Advanced Marker library: ", err);
-    new google.maps.Marker({
-      position: { lat, lng: lon },
-      map,
-      title: "Your Location (Fallback)",
-    });
+
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    const userMarker = new maplibregl.Marker({ color: "#3b82f6" })
+      .setLngLat([lon, lat])
+      .setPopup(
+        new maplibregl.Popup({ offset: 25 }).setHTML("<h4>Your Location</h4>"),
+      )
+      .addTo(map);
+
+    mapMarkers.push(userMarker);
+  } catch (mapInitError) {
+    console.error(
+      "⚠️ OpenFreeMap Canvas Initialization failed safely:",
+      mapInitError,
+    );
+    map = null;
   }
 }
-
-window.initMapWrapper = function () {
-  console.log("Google Maps API callback triggered securely.");
-  if (currentUser && currentUser.role === "customer") {
-    loadShops();
-  }
-};
 
 async function fetchShops(lat, lon) {
   try {
     const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`);
     const shops = await response.json();
     const container = document.getElementById("shopsContainer");
+    if (!container) return;
     container.innerHTML = "";
 
     if (!shops || shops.length === 0) {
@@ -395,30 +364,26 @@ async function fetchShops(lat, lon) {
       return;
     }
 
-    let AdvancedMarker = null;
-    if (map && typeof google !== "undefined") {
-      try {
-        const { AdvancedMarkerElement } =
-          await google.maps.importLibrary("marker");
-        AdvancedMarker = AdvancedMarkerElement;
-      } catch (err) {
-        console.warn(
-          "⚠️ Google Maps Advanced Marker library failed to load, switching to legacy fallback.",
-          err,
-        );
+    if (mapMarkers.length > 1) {
+      for (let i = 1; i < mapMarkers.length; i++) {
+        mapMarkers[i].remove();
       }
+      mapMarkers = [mapMarkers[0]];
     }
 
     shops.forEach((shop) => {
       const card = document.createElement("div");
       card.className = "shop-card";
 
+      const shopId = shop.id || shop._id;
+      const shopName = shop.name || shop.shop_name || "Partner Store";
+
       card.innerHTML = `
-        <div class="shop-name">${shop.name || shop.shop_name}</div>
+        <div class="shop-name">${shopName}</div>
         <div class="shop-distance">📍 ${(shop.distance || 0).toFixed(1)} km away</div>
         <div style="margin-top:0.5rem; color:#6b7280; font-size:12px;">⭐ ${shop.rating || "N/A"}</div>
         <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-          <button class="btn btn-primary" onclick="viewShopProducts('${shop.id || shop._id}')"
+          <button class="btn btn-primary" onclick="viewShopProducts('${shopId}')"
             style="padding:8px; font-size:12px; flex: 1;">View Products</button>
           <button class="btn btn-success" onclick="calculateRoute(${shop.latitude}, ${shop.longitude})"
             style="padding:8px; font-size:12px; flex: 1;"><i class="fas fa-directions"></i> Route</button>
@@ -426,56 +391,111 @@ async function fetchShops(lat, lon) {
       `;
       container.appendChild(card);
 
-      if (map && typeof google !== "undefined") {
-        const position = {
-          lat: parseFloat(shop.latitude),
-          lng: parseFloat(shop.longitude),
-        };
+      if (map && typeof maplibregl !== "undefined") {
+        const shopLat = parseFloat(shop.latitude);
+        const shopLon = parseFloat(shop.longitude);
 
-        if (AdvancedMarker) {
-          new AdvancedMarker({
-            position: position,
-            map: map,
-            title: shop.name || shop.shop_name,
-          });
-        } else {
-          new google.maps.Marker({
-            position: position,
-            map: map,
-            title: shop.name || shop.shop_name,
-          });
+        try {
+          const shopMarker = new maplibregl.Marker({ color: "#10b981" })
+            .setLngLat([shopLon, shopLat])
+            .setPopup(
+              new maplibregl.Popup({ offset: 25 }).setHTML(
+                `<h4>${shopName}</h4>`,
+              ),
+            )
+            .addTo(map);
+
+          mapMarkers.push(shopMarker);
+        } catch (markerInstanceError) {
+          console.warn(
+            "⚠️ Could not append MapLibre marker instance directly:",
+            markerInstanceError,
+          );
         }
       }
     });
   } catch (error) {
-    console.error(
-      "🚨 Error inside fetchShops runtime execution execution:",
-      error,
-    );
+    console.error("🚨 Error inside fetchShops runtime execution:", error);
     showAlert("Failed to load shops", "danger");
   }
 }
 
-function calculateRoute(destLat, destLon) {
-  if (!directionsService || !directionsRenderer) {
-    showAlert("Map routing engine not loaded yet.", "danger");
+/**
+ * Route calculation engine.
+ * Uses public OSRM (Open Source Routing Machine) API to parse route path coordinates.
+ */
+async function calculateRoute(destLat, destLon) {
+  if (!map || typeof maplibregl === "undefined") {
+    showAlert(
+      "Map engine interface layer is missing configuration properties.",
+      "danger",
+    );
     return;
   }
 
-  const request = {
-    origin: { lat: userCurrentLat, lng: userCurrentLon },
-    destination: { lat: parseFloat(destLat), lng: parseFloat(destLon) },
-    travelMode: google.maps.TravelMode.DRIVING,
-  };
+  const origin = `${userCurrentLon},${userCurrentLat}`;
+  const destination = `${destLon},${destLat}`;
+  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`;
 
-  directionsService.route(request, (result, status) => {
-    if (status === google.maps.DirectionsStatus.OK) {
-      directionsRenderer.setDirections(result);
-      showAlert("Route calculated! Follow the highlighted path.", "success");
-    } else {
-      showAlert("Directions calculation request failed: " + status, "danger");
+  try {
+    const response = await fetch(osrmUrl);
+    if (!response.ok)
+      throw new Error(
+        "OSRM Routing API returned error code mapping status context.",
+      );
+
+    const data = await response.json();
+    if (!data.routes || data.routes.length === 0) {
+      showAlert(
+        "No driving route profiles found between target coordinates.",
+        "danger",
+      );
+      return;
     }
-  });
+
+    const routeGeometry = data.routes[0].geometry;
+
+    if (map.getSource("route")) {
+      map.getSource("route").setData(routeGeometry);
+    } else {
+      map.addSource("route", {
+        type: "geojson",
+        data: routeGeometry,
+      });
+
+      map.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 5,
+          "line-opacity": 0.75,
+        },
+      });
+    }
+
+    const coordinates = routeGeometry.coordinates;
+    const bounds = coordinates.reduce(
+      (acc, coord) => {
+        return acc.extend(coord);
+      },
+      new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+    );
+
+    map.fitBounds(bounds, { padding: 50 });
+    showAlert(
+      "Route calculated! Path highlighted on open map view grid.",
+      "success",
+    );
+  } catch (routeError) {
+    console.error("🚨 Routing execution runtime engine error:", routeError);
+    showAlert("Failed to query line paths route vectors natively.", "danger");
+  }
 }
 
 async function viewShopProducts(shopId) {
@@ -483,12 +503,14 @@ async function viewShopProducts(shopId) {
     const response = await fetch(`${API_BASE}/shops/${shopId}/products`);
     const products = await response.json();
 
+    const container = document.getElementById("shopsContainer");
+    if (!container) return;
+
     if (!products || products.length === 0) {
       showAlert("This shop has no products listed.", "danger");
       return;
     }
 
-    const container = document.getElementById("shopsContainer");
     let html = `
       <div class="card" style="grid-column: 1 / -1;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -592,6 +614,7 @@ async function findOptimalShops() {
 
 function displaySearchResults(data) {
   const container = document.getElementById("searchResults");
+  if (!container) return;
   let html = "<h3>Results:</h3>";
 
   if (data.complete) {
@@ -625,7 +648,7 @@ function displaySearchResults(data) {
               style="flex: 1;">
               Order from ${shop.name}
             </button>
-            <button class="btn btn-primary" 
+            <button class="btn btn-primary"  
               onclick="calculateRoute(${shop.latitude}, ${shop.longitude})"
               style="flex: 1;"><i class="fas fa-directions"></i> Route</button>
           </div>
@@ -664,7 +687,8 @@ async function proceedToCheckout(shopId, cacheKey) {
     showAlert("Order placed successfully!", "success");
     shoppingListItems = [];
     renderShoppingList();
-    document.getElementById("searchResults").innerHTML = "";
+    const resultsContainer = document.getElementById("searchResults");
+    if (resultsContainer) resultsContainer.innerHTML = "";
   } catch (error) {
     showAlert("Failed to place order", "danger");
   }
@@ -692,10 +716,10 @@ async function loadCustomerOrders() {
         <p style="margin:0.25rem 0; color:#4b5563;">Store: <strong>${order.shop_name || "Partner Store"}</strong></p>
         <p style="margin:0.25rem 0;">Status:
           <span class="user-badge" style="background:${order.status === "delivered" ? "var(--success)" : "var(--warning)"}">
-            ${order.status.toUpperCase()}
+            ${(order.status || "pending").toUpperCase()}
           </span>
         </p>
-        <p style="margin:0.5rem 0; font-weight:600;">Total: ₹${order.total || order.total_price}</p>
+        <p style="margin:0.25rem 0; font-weight:600;">Total: ₹${order.total || order.total_price}</p>
       </div>
     `,
       )
@@ -705,7 +729,6 @@ async function loadCustomerOrders() {
   }
 }
 
-// ===== SHOPKEEPER FUNCTIONS =====
 async function loadDashboard() {
   try {
     const response = await fetch(`${API_BASE}/shopkeeper/dashboard`, {
@@ -735,6 +758,7 @@ async function loadInventory() {
     });
     const products = await response.json();
     const container = document.getElementById("inventoryTable");
+    if (!container) return;
 
     if (!products || products.length === 0) {
       container.innerHTML =
@@ -778,6 +802,7 @@ async function loadShopOrders() {
     });
     const orders = await response.json();
     const container = document.getElementById("shopOrdersContainer");
+    if (!container) return;
 
     if (!orders || orders.length === 0) {
       container.innerHTML = "<p>No orders yet.</p>";
@@ -925,6 +950,7 @@ async function loadAllUsers() {
     });
     const users = await response.json();
     const container = document.getElementById("usersTable");
+    if (!container) return;
 
     container.innerHTML = `
       <table class="product-table">
@@ -994,9 +1020,11 @@ async function verifyAdmin() {
 }
 
 function openAddProductModal() {
-  document.getElementById("addProductModal").classList.add("active");
+  const modal = document.getElementById("addProductModal");
+  if (modal) modal.classList.add("active");
 }
 
 function closeModal(modalId) {
-  document.getElementById(modalId).classList.remove("active");
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.remove("active");
 }
