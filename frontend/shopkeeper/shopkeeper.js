@@ -1,76 +1,69 @@
-const API_BASE = "http://localhost:5000/api";
 let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
 window.addEventListener("DOMContentLoaded", () => {
   if (!currentUser || currentUser.role !== "shopkeeper") {
-    window.location.href = "/auth.html";
+    window.location.href = "../auth.html";
     return;
   }
-  renderNavBar();
-  renderSidebar();
+  document.getElementById("userName").textContent = currentUser.name;
   loadDashboard();
 });
 
-// --- UI Logic ---
-function renderNavBar() {
-  document.getElementById("userName").textContent = currentUser.name;
-  document.getElementById("userRole").textContent = "SHOPKEEPER";
-}
-
-function renderSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const menus = [
-    { icon: "fas fa-chart-bar", label: "Dashboard", section: "dashboard" },
-    { icon: "fas fa-boxes", label: "Inventory", section: "inventory" },
-    { icon: "fas fa-receipt", label: "Orders", section: "orders-shop" },
-  ];
-  sidebar.innerHTML = menus
-    .map(
-      (item, idx) => `
-        <div class="sidebar-item ${idx === 0 ? "active" : ""}" onclick="showSection('${item.section}', event)">
-            <i class="${item.icon}"></i> ${item.label}
-        </div>
-    `,
-    )
-    .join("");
-}
-
-function showSection(sectionName, event) {
+function switchSection(sectionName) {
   document
     .querySelectorAll(".section")
     .forEach((s) => s.classList.remove("active"));
   document.getElementById(`section-${sectionName}`).classList.add("active");
 
   document
-    .querySelectorAll(".sidebar-item")
-    .forEach((item) => item.classList.remove("active"));
-  if (event) event.currentTarget.classList.add("active");
+    .querySelectorAll(".sidebar-btn")
+    .forEach((btn) => btn.classList.remove("active"));
+  event.currentTarget.classList.add("active");
 
   if (sectionName === "dashboard") loadDashboard();
   if (sectionName === "inventory") loadInventory();
   if (sectionName === "orders-shop") loadShopOrders();
 }
 
-// --- API Interactions ---
+function handleLogout() {
+  localStorage.removeItem("currentUser");
+  window.location.href = "../auth.html";
+}
+
+function openAddProductModal() {
+  document.getElementById("addProductModal").classList.add("active");
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove("active");
+}
+
 async function loadDashboard() {
-  const res = await fetch(`${API_BASE}/shopkeeper/dashboard`, {
-    credentials: "include",
-  });
-  const data = await res.json();
-  document.getElementById("totalProducts").textContent =
-    data.total_products || 0;
-  document.getElementById("ordersToday").textContent = data.orders_today || 0;
-  document.getElementById("revenueToday").textContent =
-    "₹" + (data.revenue_today || 0);
+  try {
+    const res = await fetch(`${API_BASE}/shopkeeper/dashboard`, {
+      credentials: "include",
+    });
+    const data = await res.json();
+    document.getElementById("totalProducts").textContent =
+      data.total_products || 0;
+    document.getElementById("ordersToday").textContent = data.orders_today || 0;
+    document.getElementById("revenueToday").textContent =
+      "₹" + (data.revenue_today || 0);
+    document.getElementById("lowStockCount").textContent =
+      data.low_stock_count || 0;
+  } catch (err) {
+    console.error("Dashboard error:", err);
+  }
 }
 
 async function loadInventory() {
-  const res = await fetch(`${API_BASE}/shopkeeper/products`, {
-    credentials: "include",
-  });
-  const products = await res.json();
-  const container = document.getElementById("inventoryTable");
-  container.innerHTML = `
+  try {
+    const res = await fetch(`${API_BASE}/shopkeeper/products`, {
+      credentials: "include",
+    });
+    const products = await res.json();
+    const container = document.getElementById("inventoryTable");
+    container.innerHTML = `
         <table class="product-table">
             <thead><tr><th>Name</th><th>Price</th><th>Qty</th><th>Action</th></tr></thead>
             <tbody>${products
@@ -86,29 +79,44 @@ async function loadInventory() {
               .join("")}
             </tbody>
         </table>`;
+  } catch (err) {
+    showAlert("Failed to load inventory", "danger");
+  }
 }
 
 async function addProduct() {
   const data = {
     name: document.getElementById("productName").value,
+    category: document.getElementById("productCategory").value,
     price: parseFloat(document.getElementById("productPrice").value),
     quantity: parseInt(document.getElementById("productQty").value),
   };
-  await fetch(`${API_BASE}/shopkeeper/products`, {
+
+  const res = await fetch(`${API_BASE}/shopkeeper/products`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
   });
-  loadInventory();
+
+  if (res.ok) {
+    showAlert("Product added successfully", "success");
+    closeModal("addProductModal");
+    loadInventory();
+  } else {
+    showAlert("Error adding product", "danger");
+  }
 }
 
 async function deleteProduct(id) {
-  await fetch(`${API_BASE}/shopkeeper/products/${id}`, {
+  const res = await fetch(`${API_BASE}/shopkeeper/products/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
-  loadInventory();
+  if (res.ok) {
+    showAlert("Product deleted", "success");
+    loadInventory();
+  }
 }
 
 async function loadShopOrders() {
@@ -116,13 +124,29 @@ async function loadShopOrders() {
     credentials: "include",
   });
   const orders = await res.json();
-  document.getElementById("shopOrdersContainer").innerHTML = orders
-    .map(
-      (o) => `
-        <div class="card">
+  document.getElementById("shopOrdersContainer").innerHTML =
+    orders.length > 0
+      ? orders
+          .map(
+            (o) => `
+        <div class="card" style="margin-bottom: 10px;">
             <h4>Order #${o.id}</h4>
-            <button class="btn btn-success" onclick="markDelivered('${o.id}')">Mark Delivered</button>
+            <button class="btn btn-primary" onclick="markDelivered('${o.id}')">Mark Delivered</button>
         </div>`,
-    )
-    .join("");
+          )
+          .join("")
+      : "<p>No active orders.</p>";
+}
+
+async function markDelivered(id) {
+  const res = await fetch(`${API_BASE}/shopkeeper/orders/${id}/deliver`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (res.ok) {
+    showAlert("Order marked as delivered", "success");
+    loadShopOrders();
+  } else {
+    showAlert("Failed to update order", "danger");
+  }
 }

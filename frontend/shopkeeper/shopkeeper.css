@@ -1,21 +1,116 @@
 @import url("../shared/base.css");
 
-.card-metric {
+.main-container {
+  display: flex;
+  min-height: 100vh;
+}
+.sidebar {
+  width: 250px;
+  background: #1e293b;
+  color: white;
+  padding: 1rem;
+}
+.content {
+  flex: 1;
+  padding: 2rem;
+  background: #f8fafc;
+}
+
+.grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+.card-value {
   font-size: 28px;
   font-weight: 700;
-  color: var(--primary);
+  margin-bottom: 0.5rem;
 }
+.card-label {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
 .product-table {
   width: 100%;
   border-collapse: collapse;
   background: white;
+  margin-top: 1rem;
 }
 .product-table th {
-  background: var(--light);
+  background: #f1f5f9;
   padding: 1rem;
   text-align: left;
+  border-bottom: 2px solid #e2e8f0;
 }
 .product-table td {
   padding: 1rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal.active {
+  display: flex;
+}
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+.form-group input {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.modal-content .btn {
+  width: 100%;
+  margin-top: 1rem;
 }
