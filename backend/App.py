@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, session
+from flask import Flask
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
@@ -14,37 +14,35 @@ from routes.admin import admin_bp
 
 app = Flask(__name__)
 
+# Basic Config
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False
 
+# DB Config
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///invtrack.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-unified_api_key = os.getenv('GOOGLE_MAPS_API_KEY')
-
-app.config['ROUTES_API_KEY'] = unified_api_key or os.getenv('ROUTES_API')
-app.config['PLACES_API_KEY'] = unified_api_key or os.getenv('PLACES_API')
-app.config['GEOCODING_API_KEY'] = unified_api_key or os.getenv('GEOCODING_API')
-app.config['GEOLOCATION_API_KEY'] = unified_api_key or os.getenv('GEOLOCATION_API')
-
+# CORS Configuration
 CORS(
     app,
     supports_credentials=True,
     origins=[
         "http://127.0.0.1:5500",
         "http://localhost:5500",
-        "http://127.0.0.1:3000"
-        "http://localhost:3000/"
+        "http://127.0.0.1:3000",
+        "http://localhost:3000"
     ]
 )
+
 db.init_app(app)
+
+# Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(shopkeeper_bp, url_prefix='/api/shopkeeper')
 app.register_blueprint(customer_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
-
 
 def init_db():
     with app.app_context():
@@ -81,11 +79,5 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
-
-    if app.config['PLACES_API_KEY']:
-        print("🗺️  Unified Google Maps API key context loaded completely!")
-    else:
-        print("⚠️  Warning: GOOGLE_MAPS_API_KEY variable is missing or unreadable in environment layouts.")
-        
     print("🚀 Server running on http://localhost:5000")
     app.run(debug=True, port=5000)
