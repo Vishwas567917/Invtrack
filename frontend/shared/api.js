@@ -1,6 +1,6 @@
-const API_BASE = "http://localhost:5000/api";
+export const API_BASE = "http://localhost:5000/api";
 
-function showAlert(message, type = "success") {
+export function showAlert(message, type = "success") {
   const alertEl = document.querySelector(".alert");
   if (!alertEl) return;
   alertEl.textContent = message;

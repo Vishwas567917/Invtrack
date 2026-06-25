@@ -2,7 +2,7 @@ let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
 window.addEventListener("DOMContentLoaded", () => {
   if (!currentUser || currentUser.role !== "shopkeeper") {
-    window.location.href = "../auth.html";
+    window.location.href = "../auth/auth.html";
     return;
   }
   document.getElementById("userName").textContent = currentUser.name;
@@ -27,7 +27,7 @@ function switchSection(sectionName) {
 
 function handleLogout() {
   localStorage.removeItem("currentUser");
-  window.location.href = "../auth.html";
+  window.location.href = "../auth/auth.html";
 }
 
 function openAddProductModal() {
@@ -85,26 +85,42 @@ async function loadInventory() {
 }
 
 async function addProduct() {
+  const nameInput = document.getElementById("productName");
+  const catInput = document.getElementById("productCategory");
+  const priceInput = document.getElementById("productPrice");
+  const qtyInput = document.getElementById("productQty");
+
   const data = {
-    name: document.getElementById("productName").value,
-    category: document.getElementById("productCategory").value,
-    price: parseFloat(document.getElementById("productPrice").value),
-    quantity: parseInt(document.getElementById("productQty").value),
+    name: nameInput.value,
+    category: catInput.value,
+    price: parseFloat(priceInput.value),
+    quantity: parseInt(qtyInput.value),
   };
 
-  const res = await fetch(`${API_BASE}/shopkeeper/products`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(data),
-  });
+  try {
+    const res = await fetch(`${API_BASE}/shopkeeper/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
 
-  if (res.ok) {
-    showAlert("Product added successfully", "success");
-    closeModal("addProductModal");
-    loadInventory();
-  } else {
-    showAlert("Error adding product", "danger");
+    if (res.ok) {
+      nameInput.value = "";
+      catInput.value = "";
+      priceInput.value = "";
+      qtyInput.value = "";
+
+      showAlert("Product added successfully", "success");
+      closeModal("addProductModal");
+      loadInventory();
+    } else {
+      const errorData = await res.json();
+      showAlert(errorData.message || "Error adding product", "danger");
+    }
+  } catch (err) {
+    console.error("Add Product Error:", err);
+    showAlert("Failed to connect to server", "danger");
   }
 }
 

@@ -1,5 +1,13 @@
+import { API_BASE, showAlert } from "../shared/api.js";
+
 let map;
 let marker;
+
+window.handleLogin = handleLogin;
+window.switchTab = switchTab;
+window.selectRole = selectRole;
+window.findAddressOnMap = findAddressOnMap;
+window.handleSignup = handleSignup;
 
 async function handleLogin() {
   const email = document.getElementById("loginEmail").value;
@@ -25,12 +33,12 @@ async function handleLogin() {
       ) {
         switchTab("signup");
       } else {
-        alert(errorMessage);
+        showAlert(errorMessage, "danger");
       }
     }
   } catch (error) {
     console.error("Login error:", error);
-    alert("An unexpected error occurred.");
+    showAlert("An unexpected error occurred.", "danger");
   }
 }
 
@@ -76,14 +84,17 @@ function selectRole(element, role) {
     if (!map) {
       initMap();
     } else {
-      setTimeout(() => {
-        map.resize();
-      }, 100);
+      setTimeout(() => map.resize(), 100);
     }
   }
 }
 
 function initMap() {
+  if (typeof maplibregl === "undefined") {
+    console.error("MapLibre GL not loaded");
+    return;
+  }
+
   map = new maplibregl.Map({
     container: "map",
     style: "https://tiles.openfreemap.org/styles/liberty",
@@ -92,15 +103,7 @@ function initMap() {
   });
 
   map.addControl(new maplibregl.NavigationControl(), "top-right");
-
-  map.on("load", () => {
-    map.resize();
-  });
-
-  map.on("click", (e) => {
-    const { lng, lat } = e.lngLat;
-    updateCoordinates(lat, lng);
-  });
+  map.on("click", (e) => updateCoordinates(e.lngLat.lat, e.lngLat.lng));
 }
 
 function updateCoordinates(lat, lng) {
@@ -116,20 +119,13 @@ async function findAddressOnMap() {
   const address = document.getElementById("storeAddress").value.trim();
   const city = document.getElementById("storeCity").value.trim();
 
-  if (!address || !city) {
-    alert("Please enter both Address and City.");
-    return;
-  }
-
-  const query = `${address}, ${city}`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+  if (!address || !city)
+    return showAlert("Please enter Address and City.", "danger");
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "InvTrack-CollegeProject-User",
-      },
-    });
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(`${address}, ${city}`)}&limit=1`,
+    );
     const data = await response.json();
 
     if (data && data.length > 0) {
@@ -137,13 +133,10 @@ async function findAddressOnMap() {
       map.flyTo({ center: [lon, lat], zoom: 15 });
       updateCoordinates(lat, lon);
     } else {
-      alert(
-        "Location not found. Please check your spelling or simplify the address.",
-      );
+      showAlert("Location not found.", "danger");
     }
   } catch (error) {
-    console.error("Geocoding error:", error);
-    alert("Error connecting to the map service.");
+    showAlert("Error connecting to map service.", "danger");
   }
 }
 
@@ -151,8 +144,10 @@ async function handleSignup() {
   const name = document.getElementById("signupName").value;
   const email = document.getElementById("signupEmail").value;
   const password = document.getElementById("signupPassword").value;
-  const activeRoleBtn = document.querySelector(".role-btn.active");
-  const role = activeRoleBtn.innerText.toLowerCase().includes("shopkeeper")
+  const role = document
+    .querySelector(".role-btn.active")
+    .innerText.toLowerCase()
+    .includes("shopkeeper")
     ? "shopkeeper"
     : "customer";
 
@@ -165,8 +160,8 @@ async function handleSignup() {
       city: document.getElementById("storeCity").value,
       address: document.getElementById("storeAddress").value,
       phone: document.getElementById("storePhone").value,
-      latitude: parseFloat(document.getElementById("storeLat").value),
-      longitude: parseFloat(document.getElementById("storeLon").value),
+      latitude: parseFloat(document.getElementById("storeLat").value) || 0,
+      longitude: parseFloat(document.getElementById("storeLon").value) || 0,
     };
   }
 
@@ -174,11 +169,11 @@ async function handleSignup() {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(body),
     });
 
     const data = await response.json();
-
     if (response.ok) {
       showAlert("Account created successfully! Please login.", "success");
       switchTab("login");
@@ -186,7 +181,6 @@ async function handleSignup() {
       showAlert(data.error || "Signup failed", "danger");
     }
   } catch (error) {
-    console.error("Signup error:", error);
     showAlert("An unexpected error occurred.", "danger");
   }
 }

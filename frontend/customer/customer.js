@@ -2,7 +2,7 @@ import { API_BASE, showAlert } from "../shared/api.js";
 
 let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 let map = null;
-let shoppingListItems = [];
+window.shoppingListItems = [];
 window.shopItemsCache = {};
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -12,7 +12,6 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   document.getElementById("userName").textContent = currentUser.name;
-
   loadShops();
 });
 
@@ -56,59 +55,69 @@ function initMap(lat, lon) {
 }
 
 async function fetchShops(lat, lon) {
-  const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`);
-  const shops = await response.json();
-  const container = document.getElementById("shopsContainer");
-  container.innerHTML = "";
+  try {
+    const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`, {
+      credentials: "include",
+    });
+    const shops = await response.json();
+    const container = document.getElementById("shopsContainer");
+    container.innerHTML = "";
 
-  shops.forEach((shop) => {
-    const card = document.createElement("div");
-    card.className = "shop-card";
-    card.innerHTML = `
-      <div class="shop-name">${shop.name}</div>
-      <div class="shop-distance">📍 ${shop.distance.toFixed(1)} km away</div>
-      <button class="btn btn-primary" onclick="viewShopProducts('${shop.id}')">View Products</button>
-    `;
-    container.appendChild(card);
-  });
+    shops.forEach((shop) => {
+      const card = document.createElement("div");
+      card.className = "shop-card";
+      card.innerHTML = `
+        <div class="shop-name">${shop.name}</div>
+        <div class="shop-distance">📍 ${shop.distance.toFixed(1)} km away</div>
+        <button class="btn btn-primary" onclick="window.viewShopProducts('${shop.id}')">View Products</button>
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Error fetching shops:", err);
+  }
 }
 
 window.addShoppingListItem = () => {
-  shoppingListItems.push({ id: Date.now(), name: "", quantity: 1 });
+  window.shoppingListItems.push({ id: Date.now(), name: "", quantity: 1 });
   renderShoppingList();
 };
 
 window.updateItem = (idx, field, value) => {
-  shoppingListItems[idx][field] = value;
+  window.shoppingListItems[idx][field] = value;
 };
 
-function renderShoppingList() {
+window.renderShoppingList = () => {
   const container = document.getElementById("shoppingListItems");
-  container.innerHTML = shoppingListItems
+  container.innerHTML = window.shoppingListItems
     .map(
       (item, idx) => `
       <div class="shopping-list-item">
-        <input type="text" placeholder="Product" value="${item.name}" oninput="updateItem(${idx}, 'name', this.value)">
-        <input type="number" value="${item.quantity}" oninput="updateItem(${idx}, 'quantity', this.value)">
-        <button class="btn btn-danger" onclick="shoppingListItems.splice(${idx},1); renderShoppingList()">×</button>
+        <input type="text" placeholder="Product" value="${item.name}" oninput="window.updateItem(${idx}, 'name', this.value)">
+        <input type="number" value="${item.quantity}" oninput="window.updateItem(${idx}, 'quantity', this.value)">
+        <button class="btn btn-danger" onclick="window.shoppingListItems.splice(${idx},1); window.renderShoppingList()">×</button>
       </div>
     `,
     )
     .join("");
-}
+};
 
 async function loadCustomerOrders() {
-  const res = await fetch(`${API_BASE}/orders`, { credentials: "include" });
-  const orders = await res.json();
-  document.getElementById("ordersContainer").innerHTML = orders
-    .map(
-      (o) => `
+  try {
+    const res = await fetch(`${API_BASE}/orders`, { credentials: "include" });
+    const orders = await res.json();
+    document.getElementById("ordersContainer").innerHTML = orders
+      .map(
+        (o) => `
       <div class="card">
         <h4>Order #${o.id}</h4>
         <p>Status: ${o.status}</p>
         <p>Total: ₹${o.total_price}</p>
       </div>
     `,
-    )
-    .join("");
+      )
+      .join("");
+  } catch (err) {
+    showAlert("Failed to load orders", "danger");
+  }
 }

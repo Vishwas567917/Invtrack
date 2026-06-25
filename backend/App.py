@@ -17,8 +17,9 @@ app = Flask(__name__)
 # Basic Config
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_DOMAIN'] = None
 
 # DB Config
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///invtrack.db')
@@ -28,12 +29,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(
     app,
     supports_credentials=True,
-    origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-        "http://127.0.0.1:3000",
-        "http://localhost:3000"
-    ]
+    resources={r"/api/*": {"origins": ["http://127.0.0.1:5500", "http://localhost:5500"]}},
+    expose_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
 )
 
 db.init_app(app)
