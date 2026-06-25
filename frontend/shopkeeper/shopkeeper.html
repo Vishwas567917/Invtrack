@@ -26,13 +26,19 @@
 
     <div class="main-container">
       <div class="sidebar">
-        <button class="sidebar-btn active" onclick="switchSection('dashboard')">
+        <button
+          class="sidebar-btn active"
+          onclick="switchSection(event, 'dashboard')"
+        >
           <i class="fas fa-chart-line"></i> Dashboard
         </button>
-        <button class="sidebar-btn" onclick="switchSection('inventory')">
+        <button class="sidebar-btn" onclick="switchSection(event, 'inventory')">
           <i class="fas fa-boxes-stacked"></i> Manage Inventory
         </button>
-        <button class="sidebar-btn" onclick="switchSection('orders-shop')">
+        <button
+          class="sidebar-btn"
+          onclick="switchSection(event, 'orders-shop')"
+        >
           <i class="fas fa-receipt"></i> Incoming Orders
         </button>
       </div>
@@ -123,8 +129,8 @@
         </button>
       </div>
     </div>
-
+    <div class="alert"></div>
     <script src="../shared/api.js"></script>
-    <script src="./shopkeeper.js" defer></script>
+    <script src="./shopkeeper.js"></script>
   </body>
 </html>

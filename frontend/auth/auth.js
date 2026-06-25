@@ -1,5 +1,3 @@
-import { API_BASE, showAlert } from "../shared/api.js";
-
 let map;
 let marker;
 
@@ -12,19 +10,16 @@ window.handleSignup = handleSignup;
 async function handleLogin() {
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
-
   try {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
-
     const data = await response.json();
-
     if (response.ok) {
       localStorage.setItem("currentUser", JSON.stringify(data.user));
+      localStorage.setItem("token", data.token);
       window.location.href = `../${data.user.role}/${data.user.role}.html`;
     } else {
       const errorMessage = data.error || "Login failed";
@@ -45,7 +40,6 @@ async function handleLogin() {
 function switchTab(tabType) {
   const loginForm = document.getElementById("loginForm");
   const signupForm = document.getElementById("signupForm");
-
   if (tabType === "signup") {
     loginForm.style.display = "none";
     signupForm.style.display = "block";
@@ -76,10 +70,8 @@ function selectRole(element, role) {
     .querySelectorAll(".role-btn")
     .forEach((btn) => btn.classList.remove("active"));
   element.classList.add("active");
-
   const shopFields = document.getElementById("shopkeeperFields");
   shopFields.style.display = role === "shopkeeper" ? "block" : "none";
-
   if (role === "shopkeeper") {
     if (!map) {
       initMap();
@@ -94,14 +86,12 @@ function initMap() {
     console.error("MapLibre GL not loaded");
     return;
   }
-
   map = new maplibregl.Map({
     container: "map",
     style: "https://tiles.openfreemap.org/styles/liberty",
     center: [77.209, 28.6139],
     zoom: 12,
   });
-
   map.addControl(new maplibregl.NavigationControl(), "top-right");
   map.on("click", (e) => updateCoordinates(e.lngLat.lat, e.lngLat.lng));
 }
@@ -118,16 +108,13 @@ function updateCoordinates(lat, lng) {
 async function findAddressOnMap() {
   const address = document.getElementById("storeAddress").value.trim();
   const city = document.getElementById("storeCity").value.trim();
-
   if (!address || !city)
     return showAlert("Please enter Address and City.", "danger");
-
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(`${address}, ${city}`)}&limit=1`,
     );
     const data = await response.json();
-
     if (data && data.length > 0) {
       const { lat, lon } = data[0];
       map.flyTo({ center: [lon, lat], zoom: 15 });
@@ -160,8 +147,10 @@ async function handleSignup() {
       city: document.getElementById("storeCity").value,
       address: document.getElementById("storeAddress").value,
       phone: document.getElementById("storePhone").value,
-      latitude: parseFloat(document.getElementById("storeLat").value) || 0,
-      longitude: parseFloat(document.getElementById("storeLon").value) || 0,
+      latitude:
+        Number.parseFloat(document.getElementById("storeLat").value) || 0,
+      longitude:
+        Number.parseFloat(document.getElementById("storeLon").value) || 0,
     };
   }
 
@@ -169,12 +158,11 @@ async function handleSignup() {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify(body),
     });
-
     const data = await response.json();
     if (response.ok) {
+      localStorage.setItem("token", data.token);
       showAlert("Account created successfully! Please login.", "success");
       switchTab("login");
     } else {

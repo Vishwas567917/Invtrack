@@ -31,24 +31,10 @@ cd backend
 ### Step 2: Create Virtual Environment (Recommended)
 
 ```powershell
-python -m venv venv
-
-# On Windows
-venv\Scripts\activate
-
-# On macOS/Linux
-source venv/bin/activate
+../scripts/install.ps1
 ```
 
-### Step 3: Install Python Dependencies
-
-Ensure your `requirements.txt` file contains `Flask`, `Flask-SQLAlchemy`, and `Flask-CORS`. Then install:
-
-```
-pip install -r requirements.txt
-```
-
-### Step 4: Update Google Maps API Key
+### Step 3: Update Google Maps API Key
 
 Edit `index.html` and replace `YOUR_GOOGLE_MAPS_API_KEY` with your actual key:
 
@@ -56,7 +42,7 @@ Edit `index.html` and replace `YOUR_GOOGLE_MAPS_API_KEY` with your actual key:
 <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&libraries=places,geometry"></script>
 ```
 
-### Step 5: Run the Backend
+### Step 4: Run the Backend
 
 ```
 python app.py
@@ -66,7 +52,7 @@ You should see:
 Database initialized with sample data!
 Running on [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
-### Step 6: Open Frontend
+### Step 5: Open Frontend
 
 Open `index.html` directly in your web browser, or serve it using a local development server or your preferred tooling.
 
