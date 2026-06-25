@@ -23,10 +23,12 @@ app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///invtrack.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# In your app.py
 CORS(
     app,
     supports_credentials=True,
-    resources={r"/api/*": {"origins": ["http://127.0.0.1:5500", "http://localhost:5500"]}},
+    # Add port 3000 to the origins list
+    resources={r"/api/*": {"origins": ["http://127.0.0.1:3000", "http://localhost:3000"]}},
     expose_headers=["Content-Type", "Authorization"],
     allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
 )

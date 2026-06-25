@@ -32,6 +32,7 @@ cd backend
 
 ```powershell
 ../scripts/install.ps1
+.\venv\Scripts\Activate.ps1
 ```
 
 ### Step 3: Update Google Maps API Key
