@@ -1,10 +1,10 @@
-const API_BASE = "http://127.0.0.1:5000/api";
+export const API_BASE = "http://127.0.0.1:5000/api";
 
-function getToken() {
+export function getToken() {
   return localStorage.getItem("token");
 }
 
-function authHeaders() {
+export function authHeaders() {
   const token = getToken();
   return {
     "Content-Type": "application/json",
@@ -12,7 +12,7 @@ function authHeaders() {
   };
 }
 
-function showAlert(message, type = "success") {
+export function showAlert(message, type = "success") {
   const alertEl = document.querySelector(".alert");
   if (!alertEl) {
     alert(message);
@@ -23,6 +23,7 @@ function showAlert(message, type = "success") {
   setTimeout(() => alertEl.classList.remove("show"), 3000);
 }
 
+// Keep these for your HTML-based inline onclick handlers
 globalThis.API_BASE = API_BASE;
 globalThis.getToken = getToken;
 globalThis.authHeaders = authHeaders;

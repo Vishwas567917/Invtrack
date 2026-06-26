@@ -1,8 +1,22 @@
-from flask import Blueprint, request, jsonify, session, current_app
+from flask import Blueprint, request, jsonify
 from models import db, User, Shop, Product, Order, OrderItem
 from helpers import haversine_distance, find_shops_for_items
+import jwt
+import os
 
 customer_bp = Blueprint('customer', __name__)
+
+# Helper to extract user_id from JWT
+def get_user_id_from_token():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, os.getenv('SECRET_KEY', 'fallback-secret-key-123'), algorithms=['HS256'])
+        return payload['user_id']
+    except Exception:
+        return None
 
 @customer_bp.route('/shops', methods=['GET'])
 def get_shops():
@@ -69,7 +83,7 @@ def find_shops_for_list():
 
 @customer_bp.route('/orders/pre-order', methods=['POST'])
 def create_pre_order():
-    user_id = session.get('user_id') or session.get('_user_id') or request.headers.get('X-User-Id')
+    user_id = get_user_id_from_token()
     if not user_id:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -103,7 +117,7 @@ def create_pre_order():
 
 @customer_bp.route('/orders', methods=['GET'])
 def get_user_orders():
-    user_id = session.get('user_id') or session.get('_user_id') or request.headers.get('X-User-Id')
+    user_id = get_user_id_from_token()
     if not user_id:
         return jsonify({'error': 'Unauthorized'}), 401
         

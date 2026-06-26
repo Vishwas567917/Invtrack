@@ -5,31 +5,38 @@ let map = null;
 window.shoppingListItems = [];
 window.shopItemsCache = {};
 
+// Helper to get Auth Headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  };
+};
+
 window.addEventListener("DOMContentLoaded", () => {
   if (!currentUser || currentUser.role !== "customer") {
     window.location.href = "../auth/auth.html";
     return;
   }
-
   document.getElementById("userName").textContent = currentUser.name;
   loadShops();
 });
 
 window.handleLogout = () => {
   localStorage.removeItem("currentUser");
+  localStorage.removeItem("token");
   window.location.href = "../auth/auth.html";
 };
 
+// Fixed Navigation Logic
 window.showSection = (sectionName, event) => {
-  document
-    .querySelectorAll(".section")
-    .forEach((s) => s.classList.remove("active"));
-  document.getElementById(`section-${sectionName}`).classList.add("active");
+  document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
+  const target = document.getElementById(`section-${sectionName}`);
+  if (target) target.classList.add("active");
 
-  document
-    .querySelectorAll(".sidebar-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-  if (event) event.currentTarget.classList.add("active");
+  document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
+  if (event && event.currentTarget) event.currentTarget.classList.add("active");
 
   if (sectionName === "orders") loadCustomerOrders();
   if (sectionName === "shops" && map) map.resize();
@@ -57,7 +64,7 @@ function initMap(lat, lon) {
 async function fetchShops(lat, lon) {
   try {
     const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`, {
-      credentials: "include",
+      headers: getAuthHeaders()
     });
     const shops = await response.json();
     const container = document.getElementById("shopsContainer");
@@ -78,6 +85,18 @@ async function fetchShops(lat, lon) {
   }
 }
 
+// Fetch products from backend
+window.viewShopProducts = async (shopId) => {
+  try {
+    const res = await fetch(`${API_BASE}/shops/${shopId}/products`, { headers: getAuthHeaders() });
+    const products = await res.json();
+    console.log("Products:", products);
+    showAlert(`Loaded ${products.length} products`, "success");
+  } catch (err) {
+    showAlert("Failed to load products", "danger");
+  }
+};
+
 window.addShoppingListItem = () => {
   window.shoppingListItems.push({ id: Date.now(), name: "", quantity: 1 });
   renderShoppingList();
@@ -90,34 +109,35 @@ window.updateItem = (idx, field, value) => {
 window.renderShoppingList = () => {
   const container = document.getElementById("shoppingListItems");
   container.innerHTML = window.shoppingListItems
-    .map(
-      (item, idx) => `
+    .map((item, idx) => `
       <div class="shopping-list-item">
         <input type="text" placeholder="Product" value="${item.name}" oninput="window.updateItem(${idx}, 'name', this.value)">
         <input type="number" value="${item.quantity}" oninput="window.updateItem(${idx}, 'quantity', this.value)">
         <button class="btn btn-danger" onclick="window.shoppingListItems.splice(${idx},1); window.renderShoppingList()">×</button>
       </div>
-    `,
-    )
-    .join("");
+    `).join("");
 };
 
 async function loadCustomerOrders() {
   try {
-    const res = await fetch(`${API_BASE}/orders`, { credentials: "include" });
+    const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
     const orders = await res.json();
-    document.getElementById("ordersContainer").innerHTML = orders
-      .map(
-        (o) => `
+    const container = document.getElementById("ordersContainer");
+    container.innerHTML = orders.map((o) => `
       <div class="card">
         <h4>Order #${o.id}</h4>
         <p>Status: ${o.status}</p>
-        <p>Total: ₹${o.total_price}</p>
+        <p>Total: ₹${o.total}</p>
       </div>
-    `,
-      )
-      .join("");
+    `).join("");
   } catch (err) {
     showAlert("Failed to load orders", "danger");
   }
 }
+// At the bottom of customer.js
+window.showSection = showSection;
+window.handleLogout = handleLogout;
+window.viewShopProducts = viewShopProducts;
+window.addShoppingListItem = addShoppingListItem;
+window.updateItem = updateItem;
+window.renderShoppingList = renderShoppingList;
