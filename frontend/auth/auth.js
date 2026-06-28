@@ -1,3 +1,4 @@
+import { API_BASE } from '../shared/api.js';
 let map;
 let marker;
 

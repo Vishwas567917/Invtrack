@@ -1,27 +1,32 @@
-import { API_BASE, showAlert } from "../shared/api.js";
+import { API_BASE, showAlert, authHeaders } from "../shared/api.js";
 
 let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 let map = null;
 window.shoppingListItems = [];
 window.shopItemsCache = {};
 
-// Helper to get Auth Headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`
-  };
-};
-
-window.addEventListener("DOMContentLoaded", () => {
-  if (!currentUser || currentUser.role !== "customer") {
+window.addEventListener("DOMContentLoaded", async () => {
+  // 1. Verify token with backend upon loading
+  const isValid = await verifyToken();
+  if (!isValid) {
     window.location.href = "../auth/auth.html";
     return;
   }
+  
   document.getElementById("userName").textContent = currentUser.name;
   loadShops();
 });
+
+// NEW: Verify Token function
+async function verifyToken() {
+  try {
+    const res = await fetch(`${API_BASE}/verify-token`, { headers: authHeaders() });
+    if (res.ok) return true;
+  } catch (err) {
+    console.error("Token verification failed:", err);
+  }
+  return false;
+}
 
 window.handleLogout = () => {
   localStorage.removeItem("currentUser");
@@ -63,13 +68,10 @@ function initMap(lat, lon) {
 
 async function fetchShops(lat, lon) {
   try {
-    const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`, {
-      headers: getAuthHeaders()
-    });
+    const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`, { headers: authHeaders() });
     const shops = await response.json();
     const container = document.getElementById("shopsContainer");
     container.innerHTML = "";
-
     shops.forEach((shop) => {
       const card = document.createElement("div");
       card.className = "shop-card";
@@ -85,59 +87,117 @@ async function fetchShops(lat, lon) {
   }
 }
 
-// Fetch products from backend
 window.viewShopProducts = async (shopId) => {
   try {
-    const res = await fetch(`${API_BASE}/shops/${shopId}/products`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/shops/${shopId}/products`, { headers: authHeaders() });
     const products = await res.json();
-    console.log("Products:", products);
-    showAlert(`Loaded ${products.length} products`, "success");
+    const container = document.getElementById("productsContainer");
+    if (!products || products.length === 0) {
+        container.innerHTML = `<p>No products available in this shop.</p>`;
+        return;
+    }
+    const productHtml = products.map(product => `
+        <div class="card" style="margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>${product.name}</strong> - ₹${product.price ?? 0}
+                <p style="margin: 0; font-size: 12px;">Stock: ${product.stock ?? 0}</p>
+            </div>
+            <button class="btn btn-primary" onclick="window.addToShoppingList('${product.name}', ${product.id})">Add to List</button>
+        </div>
+    `).join("");
+    container.innerHTML = `<h3>Products in Shop</h3>` + productHtml;
   } catch (err) {
+    console.error(err);
     showAlert("Failed to load products", "danger");
   }
 };
 
-window.addShoppingListItem = () => {
-  window.shoppingListItems.push({ id: Date.now(), name: "", quantity: 1 });
-  renderShoppingList();
+window.addToShoppingList = (productName, productId) => {
+    const existing = window.shoppingListItems.find(i => i.name === productName);
+    if (existing) {
+        existing.quantity += 1;
+    } else {
+        window.shoppingListItems.push({ id: Date.now(), product_id: productId, name: productName, quantity: 1 });
+    }
+    showAlert(`Added ${productName} to your list!`, "success");
+    window.renderShoppingList();
 };
 
-window.updateItem = (idx, field, value) => {
-  window.shoppingListItems[idx][field] = value;
+window.placeOrder = async (shopId = 1) => {
+    // 2. Correct mapping for backend
+    const items = window.shoppingListItems.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity
+    }));
+
+    try {
+        const res = await fetch(`${API_BASE}/orders/pre-order`, {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ shop_id: shopId, items: items })
+        });
+        if (res.ok) {
+            showAlert("Order placed successfully!", "success");
+            window.shoppingListItems = [];
+            window.renderShoppingList();
+            loadCustomerOrders();
+        } else {
+            showAlert("Failed to place order", "danger");
+        }
+    } catch (err) {
+        showAlert("Error connecting to server", "danger");
+    }
+};
+
+window.findOptimalShops = async () => {
+  if (window.shoppingListItems.length === 0) return showAlert("List empty!", "danger");
+  const strategy = document.querySelector('input[name="optimizationStrategy"]:checked').value;
+  try {
+    const res = await fetch(`${API_BASE}/calculate-route`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ items: window.shoppingListItems, strategy: strategy })
+    });
+    const result = await res.json();
+    document.getElementById("searchResults").innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+  } catch (err) { showAlert("Failed to calculate", "danger"); }
 };
 
 window.renderShoppingList = () => {
   const container = document.getElementById("shoppingListItems");
-  container.innerHTML = window.shoppingListItems
-    .map((item, idx) => `
+  if (!container) return;
+  container.innerHTML = window.shoppingListItems.map((item, idx) => `
       <div class="shopping-list-item">
-        <input type="text" placeholder="Product" value="${item.name}" oninput="window.updateItem(${idx}, 'name', this.value)">
-        <input type="number" value="${item.quantity}" oninput="window.updateItem(${idx}, 'quantity', this.value)">
+        <input type="text" value="${item.name}" disabled>
+        <input type="number" value="${item.quantity}" oninput="window.shoppingListItems[${idx}].quantity = this.value">
         <button class="btn btn-danger" onclick="window.shoppingListItems.splice(${idx},1); window.renderShoppingList()">×</button>
       </div>
-    `).join("");
+  `).join("");
 };
 
 async function loadCustomerOrders() {
   try {
-    const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/orders`, { headers: authHeaders() });
     const orders = await res.json();
     const container = document.getElementById("ordersContainer");
-    container.innerHTML = orders.map((o) => `
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `<p>No orders placed yet.</p>`;
+        return;
+    }
+    container.innerHTML = orders.map(o => `
       <div class="card">
         <h4>Order #${o.id}</h4>
-        <p>Status: ${o.status}</p>
-        <p>Total: ₹${o.total}</p>
+        <p>Shop: ${o.shop_name}</p>
+        <p>Status: ${o.status} | Total: ₹${o.total}</p>
       </div>
     `).join("");
-  } catch (err) {
-    showAlert("Failed to load orders", "danger");
-  }
+  } catch (err) { showAlert("Failed to load orders", "danger"); }
 }
-// At the bottom of customer.js
+
 window.showSection = showSection;
 window.handleLogout = handleLogout;
 window.viewShopProducts = viewShopProducts;
-window.addShoppingListItem = addShoppingListItem;
-window.updateItem = updateItem;
+window.addToShoppingList = addToShoppingList;
+window.placeOrder = placeOrder;
+window.findOptimalShops = findOptimalShops;
 window.renderShoppingList = renderShoppingList;

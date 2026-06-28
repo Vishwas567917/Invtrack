@@ -63,6 +63,7 @@
             "
           ></div>
           <div id="shopsContainer" class="grid grid-2"></div>
+          <div id="productsContainer" style="margin-top: 2rem;"></div>
         </div>
 
         <div id="section-shopping-list" class="section">
@@ -143,19 +144,12 @@
             <div id="shoppingListItems"></div>
 
             <div style="display: flex; gap: 1rem; margin-top: 1rem">
-              <button
-                class="btn btn-primary"
-                onclick="addShoppingListItem()"
-                style="width: auto"
-              >
-                + Add Item
-              </button>
-              <button
-                class="btn btn-success"
-                onclick="findOptimalShops()"
-                style="width: auto"
-              >
+              <button class="btn btn-primary" onclick="addShoppingListItem()" style="width: auto">+ Add Item</button>
+              <button class="btn btn-success" onclick="findOptimalShops()" style="width: auto">
                 <i class="fas fa-route"></i> Calculate Best Routing
+              </button>
+              <button class="btn btn-primary" onclick="placeOrder()" style="width: auto; background-color: #059669;">
+                Place Order
               </button>
             </div>
           </div>
