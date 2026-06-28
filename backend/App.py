@@ -1,6 +1,7 @@
 import os
 from flask import Flask
 from flask_cors import CORS
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 
@@ -16,24 +17,21 @@ app = Flask(__name__)
 
 # Basic Config
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  
-app.config['SESSION_COOKIE_SECURE'] = False
-app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///invtrack.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# In your app.py
+# CORS Config
 CORS(
     app,
     supports_credentials=True,
-    # Add port 3000 to the origins list
     resources={r"/api/*": {"origins": ["http://127.0.0.1:3000", "http://localhost:3000"]}},
     expose_headers=["Content-Type", "Authorization"],
     allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
 )
 
+# Initialize Extensions
 db.init_app(app)
+migrate = Migrate(app, db) # Migrations enabled
 
 # Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -43,10 +41,12 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
 def init_db():
     with app.app_context():
+        # Using db.create_all() for initial table creation
         db.create_all()
         if db.session.scalars(db.select(User)).first():
             return
         
+        # Seed Data
         admin = User(email='admin@invtrack.com', password=generate_password_hash('Admin@123'), name='System Admin', role='admin', is_verified=True)
         db.session.add(admin)
         db.session.flush()
@@ -75,6 +75,7 @@ def init_db():
         print("✅ Database initialized structures and seed data completed!")
 
 if __name__ == '__main__':
+    # Initialize DB (only if you don't have migrations yet)
     init_db()
     print("🚀 Server running on http://localhost:5000")
     app.run(debug=True, port=5000)
