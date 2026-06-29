@@ -219,3 +219,12 @@ async function markDelivered(id) {
     showAlert("Failed to update order", "danger");
   }
 }
+
+// Ensure functions are accessible to the HTML onclick attributes
+window.switchSection = switchSection;
+window.handleLogout = handleLogout;
+window.openAddProductModal = openAddProductModal;
+window.closeModal = closeModal;
+window.deleteProduct = deleteProduct;
+window.markDelivered = markDelivered;
+window.addProduct = addProduct;
