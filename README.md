@@ -1,66 +1,137 @@
-# InvTrack - Full-Stack Setup Guide
+# InvTrack
 
 ## 🚀 Project Overview
 
-**InvTrack** is a production-ready inventory management system with:
+InvTrack is an inventory management system built with:
 
-- **Backend**: Flask + SQLAlchemy (SQLite) modularized structure
-- **Frontend**: Single-page architecture with dynamic DOM routing and Google Maps integration
-- **Features**: Smart shopping list multi-shop finder, real-time inventory tracking, and automatic order fulfillment
+- **Backend:** Flask + SQLAlchemy with SQLite
+- **Frontend:** HTML/JavaScript modules for authentication, customer shopping, shopkeeper inventory, and admin dashboards
+- **Location Support:** MapLibre/OpenStreetMap for map rendering and geocoding via Nominatim
+- **Roles:** customer, shopkeeper, admin
 
 ---
 
 ## 📋 Prerequisites
 
-- **Python 3.8+** installed
-- **pip** (Python package manager)
-- **Google Maps API Key** (Obtained from the Google Cloud Console)
-- **Git** (optional, for version control)
+- Python 3.8+ installed
+- pip available in your Python environment
+- Git (optional)
 
 ---
 
-## 🛠️ Installation Steps
+## 🛠️ Setup and Run
 
-### Step 1: Create a Project Directory
-
-```bash
-mkdir backend
-cd backend
-```
-
-### Step 2: Create Virtual Environment (Recommended)
+### 1. Start in the project root
 
 ```powershell
-../scripts/install.ps1
+cd "c:\Users\USER\OneDrive\Documents\GitHub\Invtrack"
+```
+
+### 2. Set up the backend environment
+
+```powershell
+cd backend
+..\scripts\install.ps1
 .\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-### Step 3: Update Google Maps API Key
+### 3. Run the backend server
 
-Edit `index.html` and replace `YOUR_GOOGLE_MAPS_API_KEY` with your actual key:
-
-```html
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&libraries=places,geometry"></script>
+```powershell
+python App.py
 ```
 
-### Step 4: Run the Backend
+By default, the backend starts at:
 
 ```
-python app.py
+http://127.0.0.1:5000
 ```
 
-You should see:
-Database initialized with sample data!
-Running on [http://127.0.0.1:5000](http://127.0.0.1:5000)
+The first run creates the SQLite database and seeds sample data automatically.
 
-### Step 5: Open Frontend
+### 4. Open the frontend
 
-Open `index.html` directly in your web browser, or serve it using a local development server or your preferred tooling.
+Open this file in your browser:
 
-### 🔐 Security Features
+- `frontend/auth/auth.html`
 
-- **Role-Based Access Control (RBAC):** Enforced via route blueprints. Customers, shopkeepers, and admins are constrained to their respective logical spaces.
+Then log in as one of the sample users or register a new account.
 
-- **Cascade Protections:** Cascade rules (all, delete-orphan) are configured at the database level. Deleting parent orders or items automatically and cleanly handles child associations.
+> If you prefer a local web server, run from the `frontend` folder:
+>
+> ```powershell
+> cd ..\frontend
+> python -m http.server 8000
+> ```
+>
+> and open `http://127.0.0.1:8000/auth/auth.html`
 
-- **Transactional Consistency:** Database models snapshot product prices at the moment of checkout, maintaining precise record history despite subsequent inventory shifts.
+---
+
+## 👤 Default Accounts
+
+- Admin: `admin@invtrack.com` / `Admin@123`
+- Customer: `customer@test.com` / `test123`
+- Shopkeeper: `shop@test.com` / `test123`
+
+---
+
+## 🧩 Application Flow
+
+### Customer
+
+- Browse nearby shops
+- View products for a shop
+- Build a shopping list
+- Calculate optimal shop routing
+- Place orders
+- View order history
+
+### Shopkeeper
+
+- View dashboard summary
+- Manage inventory products
+- Delete products
+- View incoming orders
+- Mark orders delivered
+
+### Admin
+
+- View platform metrics
+- Browse all users
+- Manage users
+
+---
+
+## 🔧 Backend Notes
+
+- `backend/App.py` loads optional environment variables from `.env` using `python-dotenv`
+- Default database URI: `sqlite:///invtrack.db`
+- Default secret key: `fallback-secret-key-123`
+- API prefix: `http://127.0.0.1:5000/api`
+
+---
+
+## 📁 Project Structure
+
+- `backend/`
+  - `App.py` — Flask application entry point
+  - `models.py` — SQLAlchemy models
+  - `routes/` — API route blueprints for auth, customer, shopkeeper, admin
+  - `helpers.py` — route optimization and distance helpers
+  - `requirements.txt` — backend dependencies
+- `frontend/`
+  - `auth/` — login and signup pages
+  - `customer/` — customer dashboard and shopping flows
+  - `shopkeeper/` — shopkeeper inventory dashboard
+  - `admin/` — admin monitoring dashboard
+  - `shared/` — shared API helper functions
+
+---
+
+## ✅ Notes
+
+- The frontend uses MapLibre and OpenStreetMap, so no Google Maps API key is required.
+- If you add a `.env` file in `backend/`, you can override `SECRET_KEY` and `DATABASE_URI`.
+- Run the backend before opening frontend pages so the UI can connect to the API.
