@@ -1,5 +1,19 @@
 let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
+// Helper function for Auth headers
+function authHeaders() {
+  return {
+    "Authorization": `Bearer ${localStorage.getItem("token")}`,
+    "Content-Type": "application/json"
+  };
+}
+
+// Helper to show alerts
+function showAlert(message, type) {
+    alert(message); 
+    console.log(`${type}: ${message}`);
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   if (!currentUser || currentUser.role !== "shopkeeper") {
     window.location.href = "../auth/auth.html";
@@ -14,16 +28,14 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 function switchSection(event, sectionName) {
-  document
-    .querySelectorAll(".section")
-    .forEach((s) => s.classList.remove("active"));
+  document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
   document.getElementById(`section-${sectionName}`).classList.add("active");
-  document
-    .querySelectorAll(".sidebar-btn")
-    .forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
+  
   if (event && event.currentTarget) {
     event.currentTarget.classList.add("active");
   }
+  
   if (sectionName === "dashboard") loadDashboard();
   if (sectionName === "inventory") loadInventory();
   if (sectionName === "orders-shop") loadShopOrders();
@@ -53,13 +65,10 @@ async function loadDashboard() {
       return;
     }
     const data = await res.json();
-    document.getElementById("totalProducts").textContent =
-      data.total_products || 0;
+    document.getElementById("totalProducts").textContent = data.total_products || 0;
     document.getElementById("ordersToday").textContent = data.orders_today || 0;
-    document.getElementById("revenueToday").textContent =
-      "₹" + (data.revenue_today || 0);
-    document.getElementById("lowStockCount").textContent =
-      data.low_stock_count || 0;
+    document.getElementById("revenueToday").textContent = "₹" + (data.revenue_today || 0);
+    document.getElementById("lowStockCount").textContent = data.low_stock_count || 0;
   } catch (err) {
     console.error("Dashboard error:", err);
   }
@@ -84,18 +93,14 @@ async function loadInventory() {
       <table class="product-table">
         <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Qty</th><th>Action</th></tr></thead>
         <tbody>
-          ${products
-            .map(
-              (p) => `
+          ${products.map((p) => `
             <tr>
               <td>${p.name}</td>
               <td>${p.category}</td>
               <td>₹${p.price}</td>
               <td>${p.quantity}</td>
               <td><button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Delete</button></td>
-            </tr>`,
-            )
-            .join("")}
+            </tr>`).join("")}
         </tbody>
       </table>`;
   } catch (err) {
@@ -118,15 +123,7 @@ async function addProduct() {
     showAlert("Please fill all required fields", "danger");
     return;
   }
-  if (isNaN(price) || price <= 0) {
-    showAlert("Please enter a valid price", "danger");
-    return;
-  }
-  if (isNaN(quantity) || quantity < 0) {
-    showAlert("Please enter a valid quantity", "danger");
-    return;
-  }
-
+  
   try {
     const res = await fetch(`${API_BASE}/shopkeeper/products`, {
       method: "POST",
@@ -134,49 +131,40 @@ async function addProduct() {
       body: JSON.stringify({ name, category, price, quantity }),
     });
 
-    let responseData = {};
-    try {
-      responseData = await res.json();
-    } catch {
-      console.warn("Response is not JSON");
-    }
-
     if (res.ok) {
       nameInput.value = "";
       catInput.value = "";
       priceInput.value = "";
       qtyInput.value = "";
-      showAlert(
-        responseData.message || "Product added successfully",
-        "success",
-      );
       closeModal("addProductModal");
       await loadInventory();
     } else {
-      console.error("Server Error:", responseData);
-      showAlert(
-        responseData.error ||
-          responseData.message ||
-          `Server returned ${res.status}`,
-        "danger",
-      );
+      showAlert("Failed to add product", "danger");
     }
   } catch (err) {
-    console.error("Add Product Error:", err);
     showAlert("Failed to connect to server.", "danger");
   }
 }
 
 async function deleteProduct(id) {
-  const res = await fetch(`${API_BASE}/shopkeeper/products/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
-  if (res.ok) {
-    showAlert("Product deleted", "success");
-    loadInventory();
-  } else {
-    showAlert("Failed to delete product", "danger");
+  if (!confirm("Are you sure you want to delete this product?")) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/shopkeeper/products/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    
+    if (res.ok) {
+      showAlert("Product deleted successfully", "success");
+      await loadInventory(); // Refresh the list
+    } else {
+      const errorData = await res.json();
+      showAlert(errorData.error || "Failed to delete product", "danger");
+    }
+  } catch (err) {
+    console.error("Delete error:", err);
+    showAlert("Error connecting to server", "danger");
   }
 }
 
@@ -192,15 +180,11 @@ async function loadShopOrders() {
     const orders = await res.json();
     document.getElementById("shopOrdersContainer").innerHTML =
       orders.length > 0
-        ? orders
-            .map(
-              (o) => `
+        ? orders.map((o) => `
             <div class="card" style="margin-bottom: 10px;">
               <h4>Order #${o.id}</h4>
               <button class="btn btn-primary" onclick="markDelivered('${o.id}')">Mark Delivered</button>
-            </div>`,
-            )
-            .join("")
+            </div>`).join("")
         : "<p>No active orders.</p>";
   } catch (err) {
     showAlert("Failed to load orders", "danger");
@@ -220,7 +204,7 @@ async function markDelivered(id) {
   }
 }
 
-// Ensure functions are accessible to the HTML onclick attributes
+// Ensure functions are accessible
 window.switchSection = switchSection;
 window.handleLogout = handleLogout;
 window.openAddProductModal = openAddProductModal;

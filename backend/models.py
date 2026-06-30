@@ -12,7 +12,6 @@ class User(db.Model):
     role = db.Column(db.String(50), nullable=False, default='customer') # customer, shopkeeper, admin
     is_verified = db.Column(db.Boolean, default=False)
     shops = db.relationship('Shop', backref='owner', lazy=True)
-    # Remove backref here - it's defined in Order model instead
     orders = db.relationship('Order', lazy=True, foreign_keys='Order.customer_id')
 
 class Shop(db.Model):
@@ -37,6 +36,9 @@ class Product(db.Model):
     category = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=0)
+    
+    # Updated: Added cascade to handle deletion of items associated with this product
+    order_items = db.relationship('OrderItem', backref='product_ref', cascade="all, delete-orphan")
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -50,7 +52,6 @@ class Order(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships - backref creates the reverse relationship on User and Shop
     customer = db.relationship('User', backref='customer_orders')
     shop = db.relationship('Shop', backref='shop_orders')
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan', lazy=True)
@@ -62,4 +63,4 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price = db.Column(db.Float, nullable=False)
-    product = db.relationship('Product', backref='order_items', lazy=True)
+    # The relationship to Product is already handled by the backref in Product model

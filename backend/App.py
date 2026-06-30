@@ -4,6 +4,15 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+# Enable SQLite Foreign Key support
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 load_dotenv()
 
@@ -15,25 +24,21 @@ from routes.admin import admin_bp
 
 app = Flask(__name__)
 
-# Basic Config
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-123')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///invtrack.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# CORS Config
 CORS(
     app,
     supports_credentials=True,
-    resources={r"/api/*": {"origins": ["http://127.0.0.1:3000", "http://localhost:3000"]}},
+    resources={r"/api/*": {"origins": ["http://127.0.0.1:3000", "http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"]}},
     expose_headers=["Content-Type", "Authorization"],
-    allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
+    allow_headers=["*"] 
 )
 
-# Initialize Extensions
 db.init_app(app)
-migrate = Migrate(app, db) # Migrations enabled
+migrate = Migrate(app, db) 
 
-# Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(shopkeeper_bp, url_prefix='/api/shopkeeper')
 app.register_blueprint(customer_bp, url_prefix='/api')
@@ -41,7 +46,6 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
 def init_db():
     with app.app_context():
-        # Using db.create_all() for initial table creation
         db.create_all()
         if db.session.scalars(db.select(User)).first():
             return
