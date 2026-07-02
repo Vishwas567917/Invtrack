@@ -64,8 +64,9 @@ def register():
     city=data.get('city', ''),
     address=data.get('address', ''),
     phone=data.get('phone', ''),
-    shop_latitude=float(data.get('shop_latitude') or 0),
-    shop_longitude=float(data.get('shop_longitude') or 0)
+    latitude=float(data.get('latitude') or 0),
+    longitude=float(data.get('longitude') or 0),
+    rating=5.0
 )
             db.session.add(shop)
         except ValueError:
