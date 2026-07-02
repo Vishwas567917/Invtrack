@@ -25,6 +25,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   document.getElementById("userName").textContent = currentUser.name;
   loadDashboard();
+  switchSection(null, "dashboard");
 });
 
 function switchSection(event, sectionName) {

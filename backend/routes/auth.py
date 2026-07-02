@@ -58,11 +58,15 @@ def register():
     db.session.flush()
     if role == 'shopkeeper':
         try:
-            shop = Shop(name=data.get('shop_name', ''), owner_id=user.id,
-                        city=data.get('city', ''), address=data.get('address', ''),
-                        phone=data.get('phone', ''),
-                        latitude=float(data.get('latitude') or 0),
-                        longitude=float(data.get('longitude') or 0))
+            shop = Shop(
+    name=data.get('shop_name', ''),
+    owner_id=user.id,
+    city=data.get('city', ''),
+    address=data.get('address', ''),
+    phone=data.get('phone', ''),
+    shop_latitude=float(data.get('shop_latitude') or 0),
+    shop_longitude=float(data.get('shop_longitude') or 0)
+)
             db.session.add(shop)
         except ValueError:
             return jsonify({'error': 'Invalid location coordinates'}), 400

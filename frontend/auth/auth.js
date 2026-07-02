@@ -163,10 +163,20 @@ async function handleSignup() {
     });
     const data = await response.json();
     if (response.ok) {
-      localStorage.setItem("token", data.token);
-      showAlert("Account created successfully! Please login.", "success");
-      switchTab("login");
-    } else {
+    localStorage.setItem("token", data.token);
+
+    localStorage.setItem(
+        "currentUser",
+        JSON.stringify(data.user)
+    );
+
+    showAlert(
+        "Account created successfully! Please login.",
+        "success"
+    );
+
+    switchTab("login");
+}else {
       showAlert(data.error || "Signup failed", "danger");
     }
   } catch (error) {

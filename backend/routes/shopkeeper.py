@@ -62,14 +62,31 @@ def add_product():
 @shopkeeper_bp.route('/products/<int:id>', methods=['DELETE'])
 def delete_product(id):
     user = get_current_user()
+
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
+
+    shop = db.session.scalars(
+        db.select(Shop).filter_by(owner_id=user.id)
+    ).first()
+
+    if not shop:
+        return jsonify({'error': 'Shop not found'}), 404
+
     product = db.session.get(Product, id)
+
     if not product:
         return jsonify({'error': 'Product not found'}), 404
+
+    if product.shop_id != shop.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
     db.session.delete(product)
     db.session.commit()
-    return jsonify({"message": "Deleted"}), 200
+
+    return jsonify({
+        "message": "Deleted"
+    }), 200
 
 @shopkeeper_bp.route('/orders')
 def get_orders():
@@ -84,3 +101,9 @@ def mark_delivered(id):
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({"message": "Marked delivered"}), 200
+
+@shopkeeper_bp.route('/location', methods=['POST'])
+def update_shop_location():
+    return jsonify({
+        "message": "Location updates disabled"
+    }), 200

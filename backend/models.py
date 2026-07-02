@@ -16,13 +16,17 @@ class User(db.Model):
 
 class Shop(db.Model):
     __tablename__ = 'shops'
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     city = db.Column(db.String(100), nullable=False)
     address = db.Column(db.Text, nullable=False)
+
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
+
     rating = db.Column(db.Float, default=5.0)
     phone = db.Column(db.String(20), nullable=False)
     products = db.relationship('Product', backref='shop', lazy=True)

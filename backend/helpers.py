@@ -15,7 +15,12 @@ def find_shops_for_items(items, user_lat, user_lon, max_shops=3):
     shop_distances = []
     
     for shop in shops:
-        distance = haversine_distance(user_lat, user_lon, shop.latitude, shop.longitude)
+        distance = haversine_distance(
+    user_lat,
+    user_lon,
+    shop.shop_latitude,
+    shop.shop_longitude
+)
         shop_data = {
             'shop': shop,
             'distance': distance,

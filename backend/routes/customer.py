@@ -99,23 +99,50 @@ def calculate_route():
 @customer_bp.route('/shops', methods=['GET', 'OPTIONS'])
 def get_shops():
 
-    if request.method == 'OPTIONS': return '', 200
+    if request.method == 'OPTIONS':
+        return '', 200
 
     lat = request.args.get('lat', type=float)
-
     lon = request.args.get('lon', type=float)
 
-    shops = db.session.scalars(db.select(Shop)).all()
+    shops = db.session.scalars(
+        db.select(Shop)
+    ).all()
 
     shops_data = []
 
     for shop in shops:
+        print("Customer Location:", lat, lon)
+        print("Shop Location:", shop.latitude, shop.longitude)
+        
 
-        distance = haversine_distance(lat, lon, shop.latitude, shop.longitude) if (lat and lon) else None
+        distance = None
 
-        shops_data.append({'id': shop.id, 'name': shop.name, 'city': shop.city, 'address': shop.address, 'latitude': shop.latitude, 'longitude': shop.longitude, 'rating': shop.rating, 'distance': distance, 'owner': shop.owner.name})
+        if lat is not None and lon is not None:
+            distance = haversine_distance(
+                lat,
+                lon,
+                shop.latitude,
+                shop.longitude
+            )
+            print("Calculated Distance:", distance)
 
-    if lat and lon: shops_data.sort(key=lambda x: x['distance'] or 99999)
+        shops_data.append({
+            'id': shop.id,
+            'name': shop.name,
+            'city': shop.city,
+            'address': shop.address,
+            'latitude': shop.latitude,
+            'longitude': shop.longitude,
+            'rating': shop.rating,
+            'distance': distance,
+            'owner': shop.owner.name
+        })
+
+    shops_data.sort(
+        key=lambda x: x['distance']
+        if x['distance'] is not None else 999999
+    )
 
     return jsonify(shops_data), 200
 

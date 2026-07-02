@@ -1,6 +1,6 @@
 import { API_BASE, showAlert, authHeaders } from "../shared/api.js";
 
-let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+let currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
 let map = null;
 window.shoppingListItems = [];
 window.shopItemsCache = {};
@@ -13,7 +13,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   
-  document.getElementById("userName").textContent = currentUser.name;
+document.getElementById("userName").textContent =
+    currentUser.name || "Customer";
   loadShops();
 });
 
@@ -49,8 +50,28 @@ window.showSection = (sectionName, event) => {
 
 async function loadShops() {
   navigator.geolocation.getCurrentPosition(
-    (pos) => initMap(pos.coords.latitude, pos.coords.longitude),
-    () => initMap(28.6139, 77.209),
+    (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      initMap(lat, lon);
+    },
+    (error) => {
+      console.error("Location error:", error);
+
+      showAlert(
+        "Location permission denied. Using default location.",
+        "danger"
+      );
+
+      // Default location (Delhi)
+      initMap(28.6139, 77.2090);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
   );
 }
 
@@ -68,25 +89,159 @@ function initMap(lat, lon) {
 
 async function fetchShops(lat, lon) {
   try {
-    const response = await fetch(`${API_BASE}/shops?lat=${lat}&lon=${lon}`, { headers: authHeaders() });
+    const response = await fetch(
+      `${API_BASE}/shops?lat=${lat}&lon=${lon}`,
+      {
+        headers: authHeaders()
+      }
+    );
+
     const shops = await response.json();
+
     const container = document.getElementById("shopsContainer");
     container.innerHTML = "";
+
+    // -----------------------------
+    // Current Customer Location
+    // -----------------------------
+    new maplibregl.Marker({
+      color: "blue"
+    })
+      .setLngLat([lon, lat])
+      .setPopup(
+        new maplibregl.Popup().setHTML(`
+          <h4>Your Current Location</h4>
+        `)
+      )
+      .addTo(map);
+
+    // -----------------------------
+    // Shops
+    // -----------------------------
     shops.forEach((shop) => {
+
+      // Create shop card
       const card = document.createElement("div");
       card.className = "shop-card";
+
+      const distanceText =
+        shop.distance !== null &&
+        shop.distance !== undefined
+          ? `${shop.distance.toFixed(1)} km away`
+          : "Distance unavailable";
+
       card.innerHTML = `
         <div class="shop-name">${shop.name}</div>
-        <div class="shop-distance">📍 ${shop.distance.toFixed(1)} km away</div>
-        <button class="btn btn-primary" onclick="window.viewShopProducts('${shop.id}')">View Products</button>
+
+        <div class="shop-distance">
+          📍 ${distanceText}
+        </div>
+
+        <button class="btn btn-primary"
+          onclick="window.viewShopProducts('${shop.id}')">
+          View Products
+        </button>
       `;
+
       container.appendChild(card);
+
+      // Add marker if coordinates exist
+      if (
+        shop.latitude !== null &&
+        shop.latitude !== undefined &&
+        shop.longitude !== null &&
+        shop.longitude !== undefined
+      ) {
+        const popup = new maplibregl.Popup({
+  offset: 25
+}).setHTML(`
+  <h4>${shop.name}</h4>
+  <p>${distanceText}</p>
+  <p>${shop.address || ""}</p>
+  <small>Click marker to show route</small>
+`);
+
+const marker = new maplibregl.Marker({
+    color: "red"
+})
+.setLngLat([
+    shop.longitude,
+    shop.latitude
+])
+.setPopup(popup)
+.addTo(map);
+
+marker.getElement().addEventListener("click", () => {
+    drawRoute(
+        lon,
+        lat,
+        shop.longitude,
+        shop.latitude
+    );
+});
+      } else {
+        console.warn(
+          `Shop "${shop.name}" is missing latitude or longitude.`
+        );
+      }
     });
+
   } catch (err) {
     console.error("Error fetching shops:", err);
+    showAlert("Failed to load shops", "danger");
   }
 }
+async function drawRoute(startLon, startLat, endLon, endLat) {
 
+    const url =
+        `https://router.project-osrm.org/route/v1/driving/` +
+        `${startLon},${startLat};${endLon},${endLat}` +
+        `?overview=full&geometries=geojson`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const route = data.routes[0].geometry;
+
+    if (map.getSource("route")) {
+        map.removeLayer("route");
+        map.removeSource("route");
+    }
+
+    map.addSource("route", {
+        type: "geojson",
+        data: {
+            type: "Feature",
+            properties: {},
+            geometry: route
+        }
+    });
+
+    map.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: {
+            "line-join": "round",
+            "line-cap": "round"
+        },
+        paint: {
+            "line-color": "#0000ff",
+            "line-width": 5
+        }
+    });
+
+    const duration =
+        Math.round(data.routes[0].duration / 60);
+
+    const distance =
+        (data.routes[0].distance / 1000).toFixed(1);
+
+    alert(
+        `Distance: ${distance} km\n` +
+        `Estimated Time: ${duration} minutes`
+    );
+}
 window.viewShopProducts = async (shopId) => {
   try {
     const res = await fetch(`${API_BASE}/shops/${shopId}/products`, { headers: authHeaders() });
@@ -123,8 +278,12 @@ window.addToShoppingList = (productName, productId) => {
     window.renderShoppingList();
 };
 
-window.placeOrder = async (shopId = 1) => {
-    // 2. Correct mapping for backend
+window.placeOrder = async (shopId) => {
+
+    if (!shopId) {
+        showAlert("Please select a shop first", "danger");
+        return;
+    }
     const items = window.shoppingListItems.map(item => ({
         product_id: item.product_id,
         quantity: item.quantity
@@ -193,11 +352,3 @@ async function loadCustomerOrders() {
     `).join("");
   } catch (err) { showAlert("Failed to load orders", "danger"); }
 }
-
-window.showSection = showSection;
-window.handleLogout = handleLogout;
-window.viewShopProducts = viewShopProducts;
-window.addToShoppingList = addToShoppingList;
-window.placeOrder = placeOrder;
-window.findOptimalShops = findOptimalShops;
-window.renderShoppingList = renderShoppingList;
