@@ -10,10 +10,19 @@
   color: white;
   padding: 1rem;
 }
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+}
+
 .content {
   flex: 1;
   padding: 2rem;
   background: #f8fafc;
+  overflow-x: auto;
 }
 
 .grid {
@@ -41,9 +50,15 @@
   color: #6b7280;
   font-size: 0.9rem;
 }
-
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
 .product-table {
   width: 100%;
+  min-width: 700px;
   border-collapse: collapse;
   background: white;
   margin-top: 1rem;
