@@ -23,28 +23,33 @@ InvTrack is an inventory management system built with:
 
 ### 1. Start in the project root
 
-```powershell
+```sh
 cd "c:\Users\USER\OneDrive\Documents\GitHub\Invtrack"
 ```
 
 ### 2. Set up the backend environment
 
-```powershell
-cd backend
-..\scripts\install.ps1
+```sh
+../scripts/install.ps1
+```
+
+```sh
 .\venv\Scripts\Activate.ps1
+```
+
+```sh
 pip install -r requirements.txt
 ```
 
 ### 3. Run the backend server
 
-```powershell
+```sh
 python App.py
 ```
 
 By default, the backend starts at:
 
-```
+```sh
 http://127.0.0.1:5000
 ```
 
@@ -60,7 +65,7 @@ Then log in as one of the sample users or register a new account.
 
 > If you prefer a local web server, run from the `frontend` folder:
 >
-> ```powershell
+> ```sh
 > cd ..\frontend
 > python -m http.server 8000
 > ```
