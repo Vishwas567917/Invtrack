@@ -58,41 +58,63 @@ def verify_token():
 @customer_bp.route('/calculate-route', methods=['POST', 'OPTIONS'])
 def calculate_route():
 
-    if request.method == 'OPTIONS': return '', 200
+    if request.method == 'OPTIONS':
+        return '', 200
 
     data = request.json
 
     items = data.get('items', [])
-
     strategy = data.get('strategy', 'convenience')
 
-    user_lat, user_lon = 28.6139, 77.2090
+    user_lat = data.get('latitude')
+    user_lon = data.get('longitude')
 
-    
+    if user_lat is None or user_lon is None:
+        return jsonify({
+            "error": "Customer location required"
+        }), 400
 
-    normalized_items = [{'name': str(i['name']).strip().lower(), 'quantity': i.get('quantity', 1)} for i in items]
+    normalized_items = [
+        {
+            'name': str(i['name']).strip().lower(),
+            'quantity': i.get('quantity', 1)
+        }
+        for i in items
+    ]
 
-    selected_shops, missing = find_shops_for_items(normalized_items, user_lat, user_lon)
-
-    
+    selected_shops, missing = find_shops_for_items(
+        normalized_items,
+        user_lat,
+        user_lon
+    )
 
     shops_data = []
 
     for entry in selected_shops:
-
         shop = entry['shop']
 
         shops_data.append({
-
+            'shop_id': shop.id,
             'shop_name': shop.name,
-
             'distance': round(entry['distance'], 2),
-
-            'available_items': [{'name': item['product'].name, 'price': item['product'].price, 'needed': item['needed_qty']} for item in entry['available_items']]
-
+            'latitude': shop.latitude,
+            'longitude': shop.longitude,
+            'available_items': [
+                {
+                    'name': item['product'].name,
+                    'price': item['product'].price,
+                    'needed': item['needed_qty']
+                }
+                for item in entry['available_items']
+            ]
         })
 
-    return jsonify({'shops': shops_data, 'missing_items': missing, 'complete': len(missing) == 0, 'strategy': strategy}), 200
+    return jsonify({
+        'shops': shops_data,
+        'missing_items': missing,
+        'complete': len(missing) == 0,
+        'strategy': strategy
+    }), 200
 
 
 
@@ -181,77 +203,94 @@ def find_shops_for_list():
 @customer_bp.route('/orders/pre-order', methods=['POST', 'OPTIONS'])
 def create_pre_order():
 
-    if request.method == 'OPTIONS': return '', 200
+    if request.method == 'OPTIONS':
+        return '', 200
 
     user_id = get_user_id_from_token()
 
-    if not user_id: return jsonify({'error': 'Unauthorized'}), 401
-
-    
+    if not user_id:
+        return jsonify({
+            'error': 'Unauthorized'
+        }), 401
 
     data = request.json
 
-    user = db.session.get(User, user_id)
+    shop_id = data.get('shop_id')
+    items = data.get('items', [])
 
-    shop_id, items = data.get('shop_id'), data.get('items', [])
+    if not shop_id:
+        return jsonify({
+            'error': 'Shop required'
+        }), 400
 
-    
-
-    total = 0
-
-    order_items = []
-
-    
+    total_price = 0
+    order_products = []
 
     for item in items:
 
-        product = db.get_or_404(Product, item['product_id'])
+        product = db.session.get(
+            Product,
+            item['product_id']
+        )
 
-        qty = item['quantity']
+        if not product:
+            return jsonify({
+                'error': 'Product not found'
+            }), 404
 
-        if product.quantity < qty: return jsonify({'error': f'{product.name} insufficient stock'}), 400
+        qty = int(item['quantity'])
 
-        order_items.append({'product': product, 'quantity': qty, 'price': product.price})
+        if product.quantity < qty:
+            return jsonify({
+                'error':
+                f'{product.name} out of stock'
+            }), 400
 
-        total += product.price * qty
+        total_price += (
+            product.price * qty
+        )
 
-    
-
-    # FIXED: Used total_price, added payment_status, and db.session.flush()
+        order_products.append(
+            (
+                product,
+                qty
+            )
+        )
 
     order = Order(
-
-        customer_id=user.id, 
-
-        shop_id=shop_id, 
-
-        total_price=total, 
-
+        customer_id=user_id,
+        shop_id=shop_id,
+        total_price=total_price,
         status='confirmed',
-
         payment_status='paid'
-
     )
 
-    
-
     db.session.add(order)
+    db.session.flush()
 
-    db.session.flush() # FIXED: session.flush()
+    for product, qty in order_products:
 
-    
+        db.session.add(
+            OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=qty,
+                price=product.price
+            )
+        )
 
-    for item in order_items:
-
-        db.session.add(OrderItem(order_id=order.id, product_id=item['product'].id, quantity=item['quantity'], price=item['price']))
-
-        item['product'].quantity -= item['quantity']
-
-    
+        product.quantity -= qty
 
     db.session.commit()
 
-    return jsonify({'message': 'Order created', 'order': {'id': order.id}}), 201
+    return jsonify({
+        'message':
+            'Order created successfully',
+        'order_id':
+            order.id,
+        'shop_id':
+            shop_id
+    }), 201
 
 
 

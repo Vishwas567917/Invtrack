@@ -4,6 +4,9 @@ let currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
 let map = null;
 window.shoppingListItems = [];
 window.shopItemsCache = {};
+window.selectedShopId = null;
+window.currentLatitude = null;
+window.currentLongitude = null;
 
 window.addEventListener("DOMContentLoaded", async () => {
   // 1. Verify token with backend upon loading
@@ -49,30 +52,31 @@ window.showSection = (sectionName, event) => {
 };
 
 async function loadShops() {
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
 
-      initMap(lat, lon);
-    },
-    (error) => {
-      console.error("Location error:", error);
+            window.currentLatitude =
+                position.coords.latitude;
 
-      showAlert(
-        "Location permission denied. Using default location.",
-        "danger"
-      );
+            window.currentLongitude =
+                position.coords.longitude;
 
-      // Default location (Delhi)
-      initMap(28.6139, 77.2090);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-  );
+            initMap(
+                window.currentLatitude,
+                window.currentLongitude
+            );
+        },
+
+        () => {
+            window.currentLatitude = 28.6139;
+            window.currentLongitude = 77.2090;
+
+            initMap(
+                window.currentLatitude,
+                window.currentLongitude
+            );
+        }
+    );
 }
 
 function initMap(lat, lon) {
@@ -130,18 +134,46 @@ async function fetchShops(lat, lon) {
           ? `${shop.distance.toFixed(1)} km away`
           : "Distance unavailable";
 
-      card.innerHTML = `
-        <div class="shop-name">${shop.name}</div>
+     card.innerHTML = `
+    <div class="shop-name">
+        ${shop.name}
+    </div>
 
-        <div class="shop-distance">
-          📍 ${distanceText}
-        </div>
+    <div class="shop-distance">
+        📍 ${distanceText}
+    </div>
 
-        <button class="btn btn-primary"
-          onclick="window.viewShopProducts('${shop.id}')">
-          View Products
+    <div style="
+        display:flex;
+        gap:10px;
+        margin-top:10px;
+        flex-wrap:wrap;
+    ">
+        <button
+            class="btn btn-primary"
+            onclick="
+                window.viewShopProducts(
+                    '${shop.id}'
+                )
+            "
+        >
+            View Products
         </button>
-      `;
+
+        <button
+            class="btn btn-success"
+            onclick="
+                window.showShopLocation(
+                    ${shop.latitude},
+                    ${shop.longitude},
+                    '${shop.name}'
+                )
+            "
+        >
+            View Location
+        </button>
+    </div>
+`;
 
       container.appendChild(card);
 
@@ -242,6 +274,49 @@ async function drawRoute(startLon, startLat, endLon, endLat) {
         `Estimated Time: ${duration} minutes`
     );
 }
+window.showShopLocation = async (
+    shopLat,
+    shopLon,
+    shopName
+) => {
+
+    if (
+        window.currentLatitude === null ||
+        window.currentLongitude === null
+    ) {
+        showAlert(
+            "Current location not available",
+            "danger"
+        );
+        return;
+    }
+
+    map.flyTo({
+        center: [shopLon, shopLat],
+        zoom: 15,
+        essential: true
+    });
+
+    await drawRoute(
+        window.currentLongitude,
+        window.currentLatitude,
+        shopLon,
+        shopLat
+    );
+
+    new maplibregl.Popup({
+        closeOnClick: true
+    })
+    .setLngLat([
+        shopLon,
+        shopLat
+    ])
+    .setHTML(`
+        <h3>${shopName}</h3>
+        <p>Destination Shop</p>
+    `)
+    .addTo(map);
+};
 window.viewShopProducts = async (shopId) => {
   try {
     const res = await fetch(`${API_BASE}/shops/${shopId}/products`, { headers: authHeaders() });
@@ -278,48 +353,156 @@ window.addToShoppingList = (productName, productId) => {
     window.renderShoppingList();
 };
 
-window.placeOrder = async (shopId) => {
+window.placeOrder = async () => {
 
-    if (!shopId) {
-        showAlert("Please select a shop first", "danger");
+    if (!window.selectedShopId) {
+        showAlert(
+            "Please calculate route first",
+            "danger"
+        );
         return;
     }
-    const items = window.shoppingListItems.map(item => ({
-        product_id: item.product_id,
-        quantity: item.quantity
-    }));
+
+    const items =
+        window.shoppingListItems.map(item => ({
+            product_id: item.product_id,
+            quantity: Number(item.quantity)
+        }));
 
     try {
-        const res = await fetch(`${API_BASE}/orders/pre-order`, {
-            method: "POST",
-            headers: authHeaders(),
-            body: JSON.stringify({ shop_id: shopId, items: items })
-        });
-        if (res.ok) {
-            showAlert("Order placed successfully!", "success");
+
+        const response =
+            await fetch(
+                `${API_BASE}/orders/pre-order`,
+                {
+                    method: "POST",
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        shop_id:
+                            window.selectedShopId,
+                        items
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (response.ok) {
+
+            showAlert(
+                "Order placed successfully",
+                "success"
+            );
+
             window.shoppingListItems = [];
+            window.selectedShopId = null;
+
             window.renderShoppingList();
+
             loadCustomerOrders();
+
+            viewShopProducts(
+                data.shop_id ||
+                window.selectedShopId
+            );
+
         } else {
-            showAlert("Failed to place order", "danger");
+
+            showAlert(
+                data.error ||
+                "Order failed",
+                "danger"
+            );
         }
+
     } catch (err) {
-        showAlert("Error connecting to server", "danger");
+
+        console.log(err);
+
+        showAlert(
+            "Server error",
+            "danger"
+        );
     }
 };
 
 window.findOptimalShops = async () => {
-  if (window.shoppingListItems.length === 0) return showAlert("List empty!", "danger");
-  const strategy = document.querySelector('input[name="optimizationStrategy"]:checked').value;
-  try {
-    const res = await fetch(`${API_BASE}/calculate-route`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({ items: window.shoppingListItems, strategy: strategy })
-    });
-    const result = await res.json();
-    document.getElementById("searchResults").innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
-  } catch (err) { showAlert("Failed to calculate", "danger"); }
+
+    if (window.shoppingListItems.length === 0) {
+        return showAlert(
+            "Shopping list is empty",
+            "danger"
+        );
+    }
+
+    try {
+
+        const res = await fetch(
+            `${API_BASE}/calculate-route`,
+            {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    items: window.shoppingListItems,
+                    strategy:
+                        document.querySelector(
+                            'input[name="optimizationStrategy"]:checked'
+                        ).value,
+                    latitude: window.currentLatitude,
+                    longitude: window.currentLongitude
+                })
+            }
+        );
+
+        const result = await res.json();
+
+        if (!result.shops.length) {
+            showAlert(
+                "No shop found",
+                "danger"
+            );
+            return;
+        }
+
+        const selectedShop =
+            result.shops[0];
+
+        window.selectedShopId =
+            selectedShop.shop_id;
+
+        document.getElementById(
+            "searchResults"
+        ).innerHTML = `
+            <div class="card">
+                <h3>${selectedShop.shop_name}</h3>
+                <p>Distance:
+                ${selectedShop.distance} km</p>
+
+                ${selectedShop.available_items.map(item => `
+                    <div>
+                        ${item.name}
+                        x ${item.needed}
+                        - ₹${item.price}
+                    </div>
+                `).join("")}
+            </div>
+        `;
+
+        showAlert(
+            `${selectedShop.shop_name} selected`,
+            "success"
+        );
+
+    } catch (err) {
+
+        console.log(err);
+
+        showAlert(
+            "Failed to calculate route",
+            "danger"
+        );
+    }
 };
 
 window.renderShoppingList = () => {
