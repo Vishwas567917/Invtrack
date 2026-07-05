@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>InvTrack - Shopkeeper Workspace</title>
+
     <link rel="stylesheet" href="./shopkeeper.css" />
+
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -12,125 +14,171 @@
       referrerpolicy="no-referrer"
     />
   </head>
+
   <body>
+    <!-- ================= NAVBAR ================= -->
+
     <div class="navbar">
       <div class="navbar-brand">
-        <i class="fas fa-shopping-bag"></i> InvTrack Merchant
+        <i class="fas fa-shopping-bag"></i>
+        InvTrack Merchant
       </div>
+
       <div class="navbar-user">
         <span id="userName"></span>
-        <span class="user-badge">Shopkeeper</span>
+
+        <span class="user-badge"> Shopkeeper </span>
+
         <button class="logout-btn" onclick="handleLogout()">Logout</button>
       </div>
     </div>
 
+    <!-- ================= MAIN ================= -->
+
     <div class="main-container">
+      <!-- Sidebar -->
+
       <div class="sidebar">
         <button
           class="sidebar-btn active"
           onclick="switchSection(event, 'dashboard')"
         >
-          <i class="fas fa-chart-line"></i> Dashboard
+          <i class="fas fa-chart-line"></i>
+          Dashboard
         </button>
+
         <button class="sidebar-btn" onclick="switchSection(event, 'inventory')">
-          <i class="fas fa-boxes-stacked"></i> Manage Inventory
+          <i class="fas fa-boxes-stacked"></i>
+          Manage Inventory
         </button>
+
         <button
           class="sidebar-btn"
           onclick="switchSection(event, 'orders-shop')"
         >
-          <i class="fas fa-receipt"></i> Incoming Orders
+          <i class="fas fa-receipt"></i>
+          Incoming Orders
         </button>
       </div>
 
+      <!-- Content -->
+
       <div class="content">
+        <!-- Dashboard -->
+
         <div id="section-dashboard" class="section active">
           <h2>📊 Dashboard Performance Analytics</h2>
+
           <div class="grid grid-2">
             <div class="card">
               <div id="totalProducts" class="card-value" style="color: #2563eb">
                 0
               </div>
-              <div class="card-label">Total Skus Configured</div>
+
+              <div class="card-label">Total Stock</div>
             </div>
+
             <div class="card">
-              <div id="ordersToday" class="card-value" style="color: #10b981">
-                0
-              </div>
-              <div class="card-label">Inbound Orders Active</div>
-            </div>
-            <div class="card">
-              <div id="revenueToday" class="card-value" style="color: #2563eb">
+              <div
+                id="inventoryValue"
+                class="card-value"
+                style="color: #7c3aed"
+              >
                 ₹0
               </div>
-              <div class="card-label">Realized Gross Margin</div>
+
+              <div class="card-label">Inventory Value</div>
             </div>
+
+            <div class="card">
+              <div id="revenueToday" class="card-value" style="color: #16a34a">
+                ₹0
+              </div>
+
+              <div class="card-label">Total Revenue</div>
+              <div class="card-label">Total Product Price</div>
+            </div>
+
             <div class="card">
               <div id="lowStockCount" class="card-value" style="color: #ef4444">
                 0
               </div>
-              <div class="card-label">Low Stock Reorder Items</div>
+
+              <div class="card-label">Low Stock Items</div>
             </div>
           </div>
         </div>
 
+        <!-- Inventory -->
+
         <div id="section-inventory" class="section">
           <div class="inventory-header">
             <h2>📦 Stock Catalog Architecture</h2>
+
             <button class="btn btn-primary" onclick="openAddProductModal()">
-              + Add New Product Sku
+              + Add New Product SKU
             </button>
           </div>
+
           <div id="inventoryTable"></div>
         </div>
 
+        <!-- Orders -->
+
         <div id="section-orders-shop" class="section">
           <h2>📋 Live Store Purchase Requests</h2>
+
           <div id="shopOrdersContainer"></div>
         </div>
       </div>
     </div>
 
+    <!-- ================= ADD PRODUCT MODAL ================= -->
+
     <div id="addProductModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Add Product Registry Sku</h2>
+          <h2>Add Product Registry SKU</h2>
+
           <button class="close-modal" onclick="closeModal('addProductModal')">
             &times;
           </button>
         </div>
+
         <div class="form-group">
-          <label for="productName">Product Title</label>
-          <input type="text" id="productName" placeholder="e.g., Gala Apple" />
+          <label> Product Title </label>
+
+          <input id="productName" type="text" placeholder="e.g. Banana" />
         </div>
+
         <div class="form-group">
-          <label for="productCategory">Category Classification</label>
-          <input
-            type="text"
-            id="productCategory"
-            placeholder="e.g., Fresh Produce"
-          />
+          <label> Category </label>
+
+          <input id="productCategory" type="text" placeholder="e.g. Fruits" />
         </div>
+
         <div class="form-group">
-          <label for="productPrice">Base Unit Price (₹)</label>
-          <input
-            type="number"
-            id="productPrice"
-            placeholder="0.00"
-            step="0.01"
-          />
+          <label> Price (₹) </label>
+
+          <input id="productPrice" type="number" step="0.01" placeholder="0" />
         </div>
+
         <div class="form-group">
-          <label for="productQty">Stock Units Instantiated</label>
-          <input type="number" id="productQty" placeholder="100" />
+          <label> Quantity </label>
+
+          <input id="productQty" type="number" placeholder="100" />
         </div>
+
         <button class="btn btn-primary" onclick="addProduct()">
-          Save Sku to Stock
+          Save Product
         </button>
       </div>
     </div>
+
     <div class="alert"></div>
+
     <script type="module" src="../shared/api.js"></script>
+
     <script type="module" src="./shopkeeper.js"></script>
   </body>
 </html>
