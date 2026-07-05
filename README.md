@@ -1,142 +1,137 @@
 # InvTrack
 
-## 🚀 Project Overview
-
-InvTrack is an inventory management system built with:
-
-- **Backend:** Flask + SQLAlchemy with SQLite
-- **Frontend:** HTML/JavaScript modules for authentication, customer shopping, shopkeeper inventory, and admin dashboards
-- **Location Support:** MapLibre/OpenStreetMap for map rendering and geocoding via Nominatim
-- **Roles:** customer, shopkeeper, admin
+InvTrack is a modern inventory and order-management platform designed to make shopping and shop management simpler, faster, and more intelligent. It brings together customers, shopkeepers, and administrators in one connected system so that product availability, orders, and store operations can be handled with less effort and greater clarity.
 
 ---
 
-## 📋 Prerequisites
+## Why This Project Exists
 
-- Python 3.8+ installed
-- pip available in your Python environment
+Many small shops still rely on manual processes for tracking inventory, managing customer orders, and coordinating deliveries. This often leads to:
+
+- missed stock updates
+- confusion around order status
+- inefficient shopping decisions for customers
+- limited visibility for store owners and admins
+
+InvTrack was created to solve these issues by offering a simple digital workflow where users can browse shops, check product availability, place orders, manage inventory, and monitor activity from one place.
+
+---
+
+## What InvTrack Does
+
+InvTrack is built to support three main user groups:
+
+- Customers can discover nearby shops, view products, and place orders.
+- Shopkeepers can manage their stock, update product details, and process incoming orders.
+- Administrators can oversee the platform, manage users, and monitor system activity.
+
+The platform combines inventory control with location-aware shopping support, making it especially useful for local retail environments.
+
+---
+
+## Key Features
+
+### For Customers
+- Browse available shops
+- View products and prices
+- Check product availability
+- Place orders easily
+- Review order history
+- Find better shopping options using location-based logic
+
+### For Shopkeepers
+- Manage inventory items
+- Add or remove products
+- Track incoming orders
+- Update delivery and order status
+- Keep store operations organized
+
+### For Admins
+- Monitor platform activity
+- Manage users
+- Review overall system usage
+- Maintain control over the application ecosystem
+
+---
+
+## How It Works
+
+InvTrack follows a simple flow:
+
+1. A user signs in or registers.
+2. The system identifies the user role as customer, shopkeeper, or admin.
+3. Customers can browse shops and products, then place orders.
+4. Shopkeepers receive and manage those orders through their dashboard.
+5. Admins oversee the broader system and user activity.
+
+The backend handles authentication, inventory data, order processing, and role-based access, while the frontend provides a role-specific experience for each type of user.
+
+---
+
+## Tech Stack
+
+- Backend: Flask
+- Database: SQLAlchemy with SQLite
+- Authentication: secure password hashing and role-based access
+- Frontend: HTML, CSS, and JavaScript-based role pages
+- Mapping support: OpenStreetMap and MapLibre-style location features
+
+This combination keeps the system lightweight, easy to understand, and suitable for a practical inventory-management project.
+
+---
+
+## Project Structure
+
+- backend/ - Flask application, database models, API routes, and business logic
+- frontend/ - user-facing pages for authentication, customer flow, shopkeeper flow, and admin flow
+- scripts/ - setup helpers
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.8+
+- pip
 - Git (optional)
 
----
-
-## 🛠️ Setup and Run
-
-### 1. Start in the project root
-
-```sh
+### Backend Setup
+```bash
 cd "c:\Users\USER\OneDrive\Documents\GitHub\Invtrack"
+python -m venv venv
+./venv/Scripts/Activate.ps1
+pip install -r backend/requirements.txt
 ```
 
-### 2. Set up the backend environment
-
-```sh
-../scripts/install.ps1
-```
-
-```sh
-.\venv\Scripts\Activate.ps1
-```
-
-```sh
-pip install -r requirements.txt
-```
-
-### 3. Run the backend server
-
-```sh
+### Run the Server
+```bash
+cd backend
 python App.py
 ```
 
-By default, the backend starts at:
-
-```sh
-http://127.0.0.1:5000
-```
-
-The first run creates the SQLite database and seeds sample data automatically.
-
-### 4. Open the frontend
-
-Open this file in your browser:
-
-- `frontend/auth/auth.html`
-
-Then log in as one of the sample users or register a new account.
-
-> If you prefer a local web server, run from the `frontend` folder:
->
-> ```sh
-> cd ..\frontend
-> python -m http.server 8000
-> ```
->
-> and open `http://127.0.0.1:8000/auth/auth.html`
+The backend will start locally and initialize the database on first run.
 
 ---
 
-## 👤 Default Accounts
+## Default Demo Accounts
 
-- Admin: `admin@invtrack.com` / `Admin@123`
-- Customer: `customer@test.com` / `test123`
-- Shopkeeper: `shop@test.com` / `test123`
-
----
-
-## 🧩 Application Flow
-
-### Customer
-
-- Browse nearby shops
-- View products for a shop
-- Build a shopping list
-- Calculate optimal shop routing
-- Place orders
-- View order history
-
-### Shopkeeper
-
-- View dashboard summary
-- Manage inventory products
-- Delete products
-- View incoming orders
-- Mark orders delivered
-
-### Admin
-
-- View platform metrics
-- Browse all users
-- Manage users
+- Admin: admin@invtrack.com / Admin@123
+- Customer: customer@test.com / test123
+- Shopkeeper: shop@test.com / test123
 
 ---
 
-## 🔧 Backend Notes
+## Why This Matters
 
-- `backend/App.py` loads optional environment variables from `.env` using `python-dotenv`
-- Default database URI: `sqlite:///invtrack.db`
-- Default secret key: `fallback-secret-key-123`
-- API prefix: `http://127.0.0.1:5000/api`
+InvTrack is more than just an inventory app. It is a practical example of how digital tools can improve everyday retail operations by making stock management, ordering, and coordination easier for everyone involved.
 
----
-
-## 📁 Project Structure
-
-- `backend/`
-  - `App.py` — Flask application entry point
-  - `models.py` — SQLAlchemy models
-  - `routes/` — API route blueprints for auth, customer, shopkeeper, admin
-  - `helpers.py` — route optimization and distance helpers
-  - `requirements.txt` — backend dependencies
-- `frontend/`
-  - `auth/` — login and signup pages
-  - `customer/` — customer dashboard and shopping flows
-  - `shopkeeper/` — shopkeeper inventory dashboard
-  - `admin/` — admin monitoring dashboard
-  - `shared/` — shared API helper functions
+It is especially valuable for:
+- small businesses wanting a simple digital system
+- students building a full-stack project with real-world functionality
+- developers exploring role-based applications and inventory workflows
 
 ---
 
-## ✅ Notes
+## Summary
 
-- The frontend uses MapLibre and OpenStreetMap, so no Google Maps API key is required.
-- If you add a `.env` file in `backend/`, you can override `SECRET_KEY` and `DATABASE_URI`.
-- Run the backend before opening frontend pages so the UI can connect to the API.
+InvTrack aims to create a cleaner and smarter way to connect customers, shops, and administration in a single platform. It is designed to be useful, approachable, and extensible for future improvements such as payments, notifications, analytics, and advanced inventory forecasting.
