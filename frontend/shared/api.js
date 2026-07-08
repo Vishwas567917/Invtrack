@@ -23,7 +23,7 @@ export function showAlert(message, type = "success") {
   setTimeout(() => alertEl.classList.remove("show"), 3000);
 }
 
-// Keep these for your HTML-based inline onclick handlers
+
 globalThis.API_BASE = API_BASE;
 globalThis.getToken = getToken;
 globalThis.authHeaders = authHeaders;

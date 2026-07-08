@@ -1,8 +1,5 @@
 let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-// ==============================
-// AUTH HEADERS
-// ==============================
 
 function authHeaders() {
     return {
@@ -11,18 +8,12 @@ function authHeaders() {
     };
 }
 
-// ==============================
-// ALERT
-// ==============================
 
 function showAlert(message, type) {
     alert(message);
     console.log(`${type}: ${message}`);
 }
 
-// ==============================
-// INITIAL LOAD
-// ==============================
 
 window.addEventListener("DOMContentLoaded", () => {
 
@@ -43,9 +34,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 });
 
-// ==============================
-// SECTION SWITCH
-// ==============================
+
 
 function switchSection(event, sectionName) {
 
@@ -79,9 +68,6 @@ function switchSection(event, sectionName) {
 
 }
 
-// ==============================
-// DASHBOARD
-// ==============================
 
 async function loadDashboard() {
 
@@ -128,9 +114,6 @@ async function loadDashboard() {
 
 }
 
-// ==============================
-// INVENTORY
-// ==============================
 
 async function loadInventory() {
 
@@ -231,9 +214,6 @@ Delete
 
 }
 
-// ==============================
-// OPEN MODAL
-// ==============================
 
 function openAddProductModal() {
 
@@ -243,9 +223,6 @@ function openAddProductModal() {
 
 }
 
-// ==============================
-// CLOSE MODAL
-// ==============================
 
 function closeModal(id) {
 
@@ -254,9 +231,6 @@ function closeModal(id) {
         .classList.remove("active");
 
 }
-// ==============================
-// ADD PRODUCT
-// ==============================
 
 async function addProduct() {
 
@@ -307,7 +281,7 @@ async function addProduct() {
 
         closeModal("addProductModal");
 
-        // Refresh everything
+
         await loadInventory();
         await loadDashboard();
 
@@ -330,10 +304,6 @@ async function addProduct() {
     }
 
 }
-
-// ==============================
-// DELETE PRODUCT
-// ==============================
 
 async function deleteProduct(id) {
 
@@ -366,7 +336,6 @@ async function deleteProduct(id) {
             "success"
         );
 
-        // Refresh inventory and dashboard
         await loadInventory();
         await loadDashboard();
 
@@ -385,9 +354,6 @@ async function deleteProduct(id) {
 
 }
 
-// ==============================
-// LOAD ORDERS
-// ==============================
 async function loadShopOrders() {
 
     try {
@@ -494,9 +460,6 @@ Delivered ✓
     }
 
 }
-// ==============================
-// MARK DELIVERED
-// ==============================
 
 async function markDelivered(id) {
 
@@ -534,9 +497,6 @@ async function markDelivered(id) {
 
 }
 
-// ==============================
-// LOGOUT
-// ==============================
 
 function handleLogout() {
 
@@ -548,9 +508,6 @@ function handleLogout() {
 
 }
 
-// ==============================
-// EXPORT FUNCTIONS
-// ==============================
 
 window.switchSection = switchSection;
 window.handleLogout = handleLogout;

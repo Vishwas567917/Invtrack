@@ -9,7 +9,7 @@ window.currentLatitude = null;
 window.currentLongitude = null;
 
 window.addEventListener("DOMContentLoaded", async () => {
-  // 1. Verify token with backend upon loading
+
   const isValid = await verifyToken();
   if (!isValid) {
     window.location.href = "../auth/auth.html";
@@ -21,7 +21,6 @@ document.getElementById("userName").textContent =
   loadShops();
 });
 
-// NEW: Verify Token function
 async function verifyToken() {
   try {
     const res = await fetch(`${API_BASE}/verify-token`, { headers: authHeaders() });
@@ -38,7 +37,6 @@ window.handleLogout = () => {
   window.location.href = "../auth/auth.html";
 };
 
-// Fixed Navigation Logic
 window.showSection = (sectionName, event) => {
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
   const target = document.getElementById(`section-${sectionName}`);
@@ -105,9 +103,6 @@ async function fetchShops(lat, lon) {
     const container = document.getElementById("shopsContainer");
     container.innerHTML = "";
 
-    // -----------------------------
-    // Current Customer Location
-    // -----------------------------
     new maplibregl.Marker({
       color: "blue"
     })
@@ -119,12 +114,8 @@ async function fetchShops(lat, lon) {
       )
       .addTo(map);
 
-    // -----------------------------
-    // Shops
-    // -----------------------------
     shops.forEach((shop) => {
 
-      // Create shop card
       const card = document.createElement("div");
       card.className = "shop-card";
 
@@ -177,7 +168,7 @@ async function fetchShops(lat, lon) {
 
       container.appendChild(card);
 
-      // Add marker if coordinates exist
+      
       if (
         shop.latitude !== null &&
         shop.latitude !== undefined &&
