@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
-# Enable SQLite Foreign Key support
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
@@ -72,9 +71,6 @@ def init_db():
 
         db.create_all()
 
-        # -----------------------------
-        # FIX PARTH SHOP LOCATION
-        # -----------------------------
         parth_shop = db.session.execute(
             db.select(Shop).filter(
                 Shop.name.ilike("%parth%")
@@ -93,9 +89,6 @@ def init_db():
                 f"Longitude: {parth_shop.longitude}"
             )
 
-        # -----------------------------
-        # Seed database if empty
-        # -----------------------------
         if db.session.scalars(db.select(User)).first():
             return
 
@@ -174,10 +167,6 @@ def init_db():
 
         print("✅ Database initialized successfully")
 
-
-# ----------------------------------------------------
-# START SERVER
-# ----------------------------------------------------
 if __name__ == '__main__':
     init_db()
 

@@ -40,9 +40,6 @@ def find_shops_for_items(
 
     shop_results = []
 
-    # -----------------------------
-    # Analyze each shop
-    # -----------------------------
     for shop in shops:
 
         distance = haversine_distance(
@@ -100,10 +97,6 @@ def find_shops_for_items(
             "missing_items": missing_items
         })
 
-    # -----------------------------
-    # Convenience Mode
-    # nearest shop first
-    # -----------------------------
     if strategy == "convenience":
         shop_results.sort(
             key=lambda x: (
@@ -112,10 +105,6 @@ def find_shops_for_items(
             )
         )
 
-    # -----------------------------
-    # Frugal Mode
-    # cheapest shop first
-    # -----------------------------
     elif strategy == "frugal":
         shop_results.sort(
             key=lambda x: (

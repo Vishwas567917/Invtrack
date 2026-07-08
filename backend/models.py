@@ -9,7 +9,7 @@ class User(db.Model):
     name = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='customer') # customer, shopkeeper, admin
+    role = db.Column(db.String(50), nullable=False, default='customer') 
     is_verified = db.Column(db.Boolean, default=False)
     shops = db.relationship('Shop', backref='owner', lazy=True)
     orders = db.relationship('Order', lazy=True, foreign_keys='Order.customer_id')
@@ -40,8 +40,6 @@ class Product(db.Model):
     category = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=0)
-    
-    # Updated: Added cascade to handle deletion of items associated with this product
     order_items = db.relationship('OrderItem', backref='product_ref', cascade="all, delete-orphan")
 
 class Order(db.Model):
@@ -67,4 +65,3 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price = db.Column(db.Float, nullable=False)
-    # The relationship to Product is already handled by the backref in Product model

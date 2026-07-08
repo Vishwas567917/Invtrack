@@ -14,8 +14,6 @@ customer_bp = Blueprint('customer', __name__)
 
 
 
-# Helper to extract user_id from JWT
-
 def get_user_id_from_token():
 
     auth_header = request.headers.get('Authorization', '')
@@ -212,51 +210,39 @@ def create_pre_order():
         return jsonify({
             'error': 'Unauthorized'
         }), 401
-
     data = request.json
-
     shop_id = data.get('shop_id')
     items = data.get('items', [])
-
     if not shop_id:
         return jsonify({
             'error': 'Shop required'
         }), 400
-
     total_price = 0
     order_products = []
-
     for item in items:
-
         product = db.session.get(
             Product,
             item['product_id']
         )
-
         if not product:
             return jsonify({
                 'error': 'Product not found'
             }), 404
-
         qty = int(item['quantity'])
-
         if product.quantity < qty:
             return jsonify({
                 'error':
                 f'{product.name} out of stock'
             }), 400
-
         total_price += (
             product.price * qty
         )
-
         order_products.append(
             (
                 product,
                 qty
             )
         )
-
     order = Order(
         customer_id=user_id,
         shop_id=shop_id,
@@ -264,12 +250,9 @@ def create_pre_order():
         status='confirmed',
         payment_status='paid'
     )
-
     db.session.add(order)
     db.session.flush()
-
     for product, qty in order_products:
-
         db.session.add(
             OrderItem(
                 order_id=order.id,
@@ -278,11 +261,8 @@ def create_pre_order():
                 price=product.price
             )
         )
-
         product.quantity -= qty
-
     db.session.commit()
-
     return jsonify({
         'message':
             'Order created successfully',
@@ -291,20 +271,10 @@ def create_pre_order():
         'shop_id':
             shop_id
     }), 201
-
-
-
 @customer_bp.route('/orders', methods=['GET', 'OPTIONS'])
 def get_user_orders():
-
     if request.method == 'OPTIONS': return '', 200
-
     user_id = get_user_id_from_token()
-
     if not user_id: return jsonify({'error': 'Unauthorized'}), 401
-
     orders = db.session.scalars(db.select(Order).filter_by(customer_id=user_id)).all()
-
-    # FIXED: Accessing o.total_price from the model
-
     return jsonify([{'id': o.id, 'shop_name': o.shop.name, 'total': o.total_price, 'status': o.status} for o in orders]), 200

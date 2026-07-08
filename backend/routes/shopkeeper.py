@@ -5,11 +5,6 @@ import os
 
 shopkeeper_bp = Blueprint('shopkeeper', __name__)
 
-
-# ===========================================
-# GET CURRENT USER
-# ===========================================
-
 def get_current_user():
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
 
@@ -27,11 +22,6 @@ def get_current_user():
 
     except jwt.PyJWTError:
         return None
-
-
-# ===========================================
-# DASHBOARD
-# ===========================================
 
 @shopkeeper_bp.route("/dashboard", methods=["GET"])
 def dashboard():
@@ -52,39 +42,23 @@ def dashboard():
         db.select(Product).filter_by(shop_id=shop.id)
     ).all()
 
-    # -----------------------------------
-    # TOTAL STOCK
-    # Example:
-    # 199 + 100 + 50 = 349
-    # -----------------------------------
 
     total_stock = sum(product.quantity for product in products)
 
-    # -----------------------------------
-    # TOTAL PRODUCT PRICE
-    # Example:
-    # 50 + 50 + 35.5 = 135.5
-    # -----------------------------------
+   
 
     total_product_price = round(
         sum(product.price for product in products),
         2
     )
 
-    # -----------------------------------
-    # INVENTORY VALUE
-    # Example:
-    # (199×50)+(100×50)+(50×35.5)=16725
-    # -----------------------------------
+   
 
     inventory_value = round(
         sum(product.price * product.quantity for product in products),
         2
     )
 
-    # -----------------------------------
-    # LOW STOCK ITEMS
-    # -----------------------------------
 
     low_stock_count = sum(
         1
@@ -103,12 +77,6 @@ def dashboard():
         "low_stock_count": low_stock_count
 
     }), 200
-
-
-# ===========================================
-# GET PRODUCTS
-# ===========================================
-
 @shopkeeper_bp.route("/products", methods=["GET"])
 def get_shopkeeper_products():
 
@@ -141,11 +109,6 @@ def get_shopkeeper_products():
         for product in products
 
     ]), 200
-
-
-# ===========================================
-# ADD PRODUCT
-# ===========================================
 
 @shopkeeper_bp.route("/products", methods=["POST"])
 def add_product():
@@ -194,10 +157,6 @@ def add_product():
     }), 201
 
 
-# ===========================================
-# DELETE PRODUCT
-# ===========================================
-
 @shopkeeper_bp.route("/products/<int:id>", methods=["DELETE"])
 def delete_product(id):
 
@@ -230,11 +189,6 @@ def delete_product(id):
         "message": "Deleted"
 
     }), 200
-
-
-# ===========================================
-# GET ORDERS
-# ===========================================
 
 @shopkeeper_bp.route("/orders", methods=["GET"])
 def get_orders():
