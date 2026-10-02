@@ -100,7 +100,7 @@ This combination keeps the system lightweight, easy to understand, and suitable 
 cd "c:\Users\USER\OneDrive\Documents\GitHub\Invtrack"
 python -m venv venv
 ./venv/Scripts/Activate.ps1
-pip install -r backend/requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ### Run the Server
