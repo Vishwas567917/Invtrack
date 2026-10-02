@@ -30,14 +30,14 @@
       <div class="sidebar">
         <button
           class="sidebar-btn active"
-          onclick="switchSection('admin-dashboard')"
+          onclick="switchSection('users')"
         >
           <i class="fas fa-pie-chart"></i> Platform Core metrics
         </button>
-        <button class="sidebar-btn" onclick="switchSection('users')">
+        <button class="sidebar-btn" onclick="switchSection('security', event)">
           <i class="fas fa-users-gear"></i> Manage User Profiles
         </button>
-        <button class="sidebar-btn" onclick="switchSection('security')">
+        <button class="sidebar-btn" onclick="switchSection('admin-dashboard', event)">
           <i class="fas fa-key"></i> Operational Vault
         </button>
       </div>
